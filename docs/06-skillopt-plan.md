@@ -35,7 +35,7 @@ src/mimo_s2s_gepa/skillopt/
 - [x] Add a task dataset for repeated OpenClaw rollouts.
 - [x] Save one rollout subdirectory and summary per task.
 - [x] Add a trajectory analyzer that turns rollouts into structured feedback.
-- [ ] Add a candidate `SKILL.md` patch proposer.
+- [x] Add a candidate `SKILL.md` proposer.
 - [ ] Validate candidate skills through fresh OpenClaw rollouts.
 - [ ] Add accept/reject promotion reports without touching the live skill.
 
@@ -47,6 +47,7 @@ python scripts/run_baseline.py
 python scripts/run_gepa.py
 python scripts/run_openclaw_rollout.py
 python scripts/analyze_rollouts.py
+python scripts/propose_skill_candidate.py
 ```
 
 ## Expected OpenClaw Rollout Output
@@ -93,3 +94,22 @@ outputs/<timestamp>_trajectory_analysis/
 - Gemma4 returns structured feedback with success patterns, failure patterns,
   skill issues, suggested changes, evidence, and next validation tasks.
 - The analyzer does not create or modify any candidate `SKILL.md`.
+
+## Expected Skill Candidate Output
+
+```text
+outputs/<timestamp>_skill_candidate/
+  initial/SKILL.md
+  candidates/skill_v0001/SKILL.md
+  candidates/skill_v0001/diff.md
+  proposal.json
+  summary.json
+```
+
+## Candidate Criteria
+
+- The live OpenClaw skill is not overwritten.
+- The candidate keeps YAML frontmatter and `name: mimo-audio`.
+- The candidate remains scoped to MiMo-Audio S2S / LDV restoration.
+- The candidate keeps `mimo_audio_s2s`, health, `s2s`, and `s2s-smoke` guidance.
+- The candidate does not introduce TTS or unrelated workflows.

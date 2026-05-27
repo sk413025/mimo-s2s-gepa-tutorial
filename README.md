@@ -62,6 +62,13 @@ trajectory_analysis:
     -> Gemma4 analyzer reads compact trajectory evidence
     -> write structured SkillOpt feedback JSON
     -> do not mutate SKILL.md
+
+skill_candidate:
+  live OpenClaw SKILL.md + trajectory_feedback.json
+    -> Gemma4 proposes a complete candidate SKILL.md
+    -> validate candidate scope and required S2S fields
+    -> write candidate file and diff
+    -> do not overwrite the live skill
 ```
 
 ## Quick Start
@@ -114,6 +121,7 @@ python scripts/run_baseline.py
 python scripts/run_gepa.py
 python scripts/run_openclaw_rollout.py
 python scripts/analyze_rollouts.py
+python scripts/propose_skill_candidate.py
 ```
 
 Outputs are saved under `outputs/<timestamp>_<mode>/`.
@@ -132,6 +140,9 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
 - `trajectory_analysis`: ask Gemma4 to analyze a rollout run and produce
   structured SkillOpt feedback. This stage only writes analysis files; it does
   not write or edit candidate skills.
+- `skill_candidate`: ask Gemma4 to propose a complete candidate `SKILL.md` from
+  trajectory feedback. This stage writes candidate artifacts and a diff, but it
+  does not overwrite the live OpenClaw skill.
 
 Baseline and GEPA runs write `summary.json` and `predictions.json`.
 `openclaw_rollout` writes one subdirectory per task under `rollouts/`, plus a
@@ -139,6 +150,8 @@ top-level `rollout_report.json`. Progress is reported through Python logging
 while the run is active.
 `trajectory_analysis` writes `trajectory_feedback.json` and
 `rollout_evidence.json`.
+`skill_candidate` writes an initial skill snapshot, candidate skill, diff, and
+`proposal.json`.
 
 The generated wav files are written by the MiMo audio wrapper. The run summary
 records both `audio_path` and `audio_url`, for example:
@@ -185,6 +198,17 @@ Trajectory analysis runs add:
 outputs/<timestamp>_trajectory_analysis/
   trajectory_feedback.json
   rollout_evidence.json
+  summary.json
+```
+
+Skill candidate runs add:
+
+```text
+outputs/<timestamp>_skill_candidate/
+  initial/SKILL.md
+  candidates/skill_v0001/SKILL.md
+  candidates/skill_v0001/diff.md
+  proposal.json
   summary.json
 ```
 

@@ -41,3 +41,15 @@ python scripts/analyze_rollouts.py
 Leave `rollout_run_dir` empty in `configs/analyze_rollouts.yaml` to analyze the
 latest `outputs/*_openclaw_rollout` directory. The analysis stage writes
 `trajectory_feedback.json` and does not modify `SKILL.md`.
+
+`skill_candidate` reads the latest trajectory analysis and asks Gemma4 for a
+complete candidate `SKILL.md`.
+
+```bash
+python scripts/propose_skill_candidate.py
+```
+
+Leave `trajectory_analysis_dir` empty in `configs/propose_skill_candidate.yaml`
+to use the latest `outputs/*_trajectory_analysis` directory. The candidate stage
+writes `initial/SKILL.md`, `candidates/skill_v0001/SKILL.md`, `diff.md`, and
+`proposal.json`; it does not overwrite the live OpenClaw skill.
