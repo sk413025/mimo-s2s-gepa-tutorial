@@ -118,7 +118,7 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
   evaluates generated audio, and reflects on feedback.
 - `skillopt`: run a small SkillOpt-like loop over the OpenClaw `mimo-audio`
   `SKILL.md`. It writes candidate files and reports under `outputs/`, but does
-  not overwrite the live OpenClaw skill unless `allow_live_promote` is set.
+  not overwrite the live OpenClaw skill.
 
 Each run writes `summary.json` and `predictions.json`. Progress is reported
 through Python logging while the run is active.

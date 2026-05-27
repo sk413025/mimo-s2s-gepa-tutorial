@@ -1,12 +1,6 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
-
-
-def save_json(path: Path, payload: Any) -> None:
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def mean_score(rows: list[dict[str, Any]]) -> float:

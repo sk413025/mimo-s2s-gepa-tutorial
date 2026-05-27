@@ -18,7 +18,6 @@ data_path: "data/hank_sample.json"
 output_dir: "outputs"
 
 openclaw_skill_path: "/home/sbplab/.openclaw/workspace/skills/mimo-audio/SKILL.md"
-allow_live_promote: false
 
 train_size: 1
 val_size: 1

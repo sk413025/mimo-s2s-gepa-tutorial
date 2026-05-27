@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,8 +13,6 @@ class SkillSnapshot:
 
 @dataclass(frozen=True)
 class CandidateSkill:
-    version: int
-    directory: Path
     skill_path: Path
     diff_path: Path
 
@@ -40,15 +37,11 @@ def snapshot_live_skill(live_path: str | Path, run_dir: Path) -> SkillSnapshot:
     return SkillSnapshot(live_path=live, initial_path=initial_path, text=text)
 
 
-def make_candidate(run_dir: Path, text: str, diff: str, version: int = 1) -> CandidateSkill:
-    candidate_dir = run_dir / "candidates" / f"skill_v{version:04d}"
+def make_candidate(run_dir: Path, text: str, diff: str) -> CandidateSkill:
+    candidate_dir = run_dir / "candidates" / "skill_v0001"
     candidate_dir.mkdir(parents=True, exist_ok=True)
     skill_path = candidate_dir / "SKILL.md"
     diff_path = candidate_dir / "diff.md"
     skill_path.write_text(text, encoding="utf-8")
     diff_path.write_text(diff, encoding="utf-8")
-    return CandidateSkill(version=version, directory=candidate_dir, skill_path=skill_path, diff_path=diff_path)
-
-
-def promote_candidate(candidate: CandidateSkill, live_path: str | Path) -> None:
-    shutil.copyfile(candidate.skill_path, Path(live_path))
+    return CandidateSkill(skill_path=skill_path, diff_path=diff_path)

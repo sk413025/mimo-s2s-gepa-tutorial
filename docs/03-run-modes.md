@@ -28,5 +28,5 @@ SkillOpt-lite output includes `initial/SKILL.md`,
 `summary.json`.
 
 For a shared server, keep `max_metric_calls` small in `configs/gepa_light.yaml`.
-Keep `allow_live_promote: false` in `configs/skillopt_light.yaml` while using
-this as a tutorial.
+SkillOpt-lite always writes candidates and reports instead of overwriting the
+live OpenClaw skill.

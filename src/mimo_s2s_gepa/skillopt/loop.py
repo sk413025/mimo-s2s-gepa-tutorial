@@ -10,10 +10,10 @@ from ..config import PROJECT_ROOT, load_config
 from ..data import load_examples
 from ..metrics import build_gemma_metric
 from ..program import MiMoS2SProgram
-from ..runner import configure_logging, configure_task_lm, make_run_dir, prediction_to_dict
-from .openclaw_skill import CandidateSkill, make_candidate, promote_candidate, snapshot_live_skill
+from ..runner import configure_logging, configure_task_lm, make_run_dir, prediction_to_dict, save_json
+from .openclaw_skill import CandidateSkill, make_candidate, snapshot_live_skill
 from .patching import build_unified_diff, clean_candidate_skill, validate_candidate_skill
-from .reports import mean_score, report_summary, save_json
+from .reports import mean_score, report_summary
 
 LOGGER = logging.getLogger(__name__)
 
@@ -193,14 +193,9 @@ def run_skillopt(config_path: str) -> Path:
     baseline_score = mean_score(baseline_rows)
     candidate_score = mean_score(candidate_rows)
     accepted = bool(candidate and candidate_score > baseline_score)
-    promoted = False
-    if accepted and bool(config.get("allow_live_promote", False)) and candidate:
-        promote_candidate(candidate, snapshot.live_path)
-        promoted = True
 
     decision = {
         "accepted": accepted,
-        "promoted_to_live_skill": promoted,
         "reason": (
             "candidate score improved over baseline"
             if accepted
