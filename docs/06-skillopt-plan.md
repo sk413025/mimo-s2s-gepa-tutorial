@@ -12,6 +12,12 @@ The live OpenClaw skill stays in:
 The tutorial project owns training, validation, candidate files, diffs, and
 reports. The first version never overwrites the live skill automatically.
 
+SkillOpt-specific code lives under:
+
+```text
+src/mimo_s2s_gepa/skillopt/
+```
+
 ## Tracking Checklist
 
 - [x] Keep baseline and GEPA modes intact.

@@ -138,6 +138,8 @@ configs/        service URLs and run budgets
 data/           tiny Hank sample dataset
 scripts/        short entrypoints for each mode
 src/            role-based tutorial modules
+src/mimo_s2s_gepa/skillopt/
+                SkillOpt-lite artifact, patch, report, and loop helpers
 docs/           concept notes
 outputs/        run outputs, ignored by git
 ```
@@ -155,3 +157,10 @@ outputs/<timestamp>_skillopt/
   decision.json
   summary.json
 ```
+
+## References
+
+- GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning,
+  arXiv:2507.19457, https://arxiv.org/abs/2507.19457
+- SkillOpt: Executive Strategy for Self-Evolving Agent Skills,
+  arXiv:2605.23904, https://arxiv.org/abs/2605.23904

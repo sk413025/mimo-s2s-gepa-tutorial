@@ -6,14 +6,14 @@ from typing import Any
 
 import dspy
 
-from .config import PROJECT_ROOT, load_config
-from .data import load_examples
-from .metrics import build_gemma_metric
+from ..config import PROJECT_ROOT, load_config
+from ..data import load_examples
+from ..metrics import build_gemma_metric
+from ..program import MiMoS2SProgram
+from ..runner import configure_logging, configure_task_lm, make_run_dir, prediction_to_dict
 from .openclaw_skill import CandidateSkill, make_candidate, promote_candidate, snapshot_live_skill
 from .patching import build_unified_diff, clean_candidate_skill, validate_candidate_skill
-from .program import MiMoS2SProgram
 from .reports import mean_score, report_summary, save_json
-from .runner import configure_logging, configure_task_lm, make_run_dir, prediction_to_dict
 
 LOGGER = logging.getLogger(__name__)
 
