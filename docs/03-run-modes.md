@@ -30,3 +30,14 @@ snapshots, and a `trajectory/` bundle.
 For a shared server, keep `max_metric_calls` small in `configs/gepa_light.yaml`.
 The OpenClaw rollout collector uses temporary agents and deletes them after
 trajectory export; it does not overwrite the live OpenClaw skill.
+
+`trajectory_analysis` reads a rollout run and asks Gemma4 for structured
+SkillOpt feedback.
+
+```bash
+python scripts/analyze_rollouts.py
+```
+
+Leave `rollout_run_dir` empty in `configs/analyze_rollouts.yaml` to analyze the
+latest `outputs/*_openclaw_rollout` directory. The analysis stage writes
+`trajectory_feedback.json` and does not modify `SKILL.md`.

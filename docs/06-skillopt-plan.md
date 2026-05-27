@@ -34,6 +34,7 @@ src/mimo_s2s_gepa/skillopt/
 - [x] Require generated audio for the OpenClaw rollout acceptance gate.
 - [x] Add a task dataset for repeated OpenClaw rollouts.
 - [x] Save one rollout subdirectory and summary per task.
+- [x] Add a trajectory analyzer that turns rollouts into structured feedback.
 - [ ] Add a candidate `SKILL.md` patch proposer.
 - [ ] Validate candidate skills through fresh OpenClaw rollouts.
 - [ ] Add accept/reject promotion reports without touching the live skill.
@@ -45,6 +46,7 @@ python -m py_compile scripts/*.py src/mimo_s2s_gepa/*.py src/mimo_s2s_gepa/skill
 python scripts/run_baseline.py
 python scripts/run_gepa.py
 python scripts/run_openclaw_rollout.py
+python scripts/analyze_rollouts.py
 ```
 
 ## Expected OpenClaw Rollout Output
@@ -75,3 +77,19 @@ outputs/<timestamp>_openclaw_rollout/
 - `parsed_result.json` includes `final_status: success` and a generated
   `audio_path`.
 - Temporary OpenClaw agents are deleted after each run.
+
+## Expected Trajectory Analysis Output
+
+```text
+outputs/<timestamp>_trajectory_analysis/
+  trajectory_feedback.json
+  rollout_evidence.json
+  summary.json
+```
+
+## Analysis Criteria
+
+- The analyzer reads rollout outputs, not the live OpenClaw session directly.
+- Gemma4 returns structured feedback with success patterns, failure patterns,
+  skill issues, suggested changes, evidence, and next validation tasks.
+- The analyzer does not create or modify any candidate `SKILL.md`.

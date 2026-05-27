@@ -56,6 +56,12 @@ openclaw_rollout:
     -> exec s2s-smoke
     -> export trajectory bundle
     -> parse tool calls, tool results, and generated audio
+
+trajectory_analysis:
+  latest OpenClaw rollout report + parsed trajectories
+    -> Gemma4 analyzer reads compact trajectory evidence
+    -> write structured SkillOpt feedback JSON
+    -> do not mutate SKILL.md
 ```
 
 ## Quick Start
@@ -107,6 +113,7 @@ Run the available modes:
 python scripts/run_baseline.py
 python scripts/run_gepa.py
 python scripts/run_openclaw_rollout.py
+python scripts/analyze_rollouts.py
 ```
 
 Outputs are saved under `outputs/<timestamp>_<mode>/`.
@@ -122,11 +129,16 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
   layer for true trajectory-based SkillOpt. Its default config requires a
   generated audio path, so an OpenClaw run that finishes without S2S audio is
   treated as a failed validation.
+- `trajectory_analysis`: ask Gemma4 to analyze a rollout run and produce
+  structured SkillOpt feedback. This stage only writes analysis files; it does
+  not write or edit candidate skills.
 
 Baseline and GEPA runs write `summary.json` and `predictions.json`.
 `openclaw_rollout` writes one subdirectory per task under `rollouts/`, plus a
 top-level `rollout_report.json`. Progress is reported through Python logging
 while the run is active.
+`trajectory_analysis` writes `trajectory_feedback.json` and
+`rollout_evidence.json`.
 
 The generated wav files are written by the MiMo audio wrapper. The run summary
 records both `audio_path` and `audio_url`, for example:
@@ -165,6 +177,15 @@ outputs/<timestamp>_openclaw_rollout/
       prompts.json
       system-prompt.txt
       tools.json
+```
+
+Trajectory analysis runs add:
+
+```text
+outputs/<timestamp>_trajectory_analysis/
+  trajectory_feedback.json
+  rollout_evidence.json
+  summary.json
 ```
 
 ## References
