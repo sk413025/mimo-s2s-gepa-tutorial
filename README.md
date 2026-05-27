@@ -18,7 +18,41 @@ Check the two OpenAI-compatible services:
 
 ```bash
 curl http://100.70.253.93:8000/v1/models
-curl http://127.0.0.1:19080/v1/models
+curl http://100.70.78.122:19080/v1/models
+```
+
+Current service locations:
+
+```text
+Gemma4 vLLM
+  Tailscale IP: 100.70.253.93
+  Port: 8000
+  OpenAI base URL: http://100.70.253.93:8000/v1
+  Model id: google/gemma-4-E4B-it
+
+MiMo audio wrapper
+  Hostname: sbplab
+  Tailscale IP: 100.70.78.122
+  Port: 19080
+  OpenAI base URL: http://100.70.78.122:19080/v1
+  Model id: mimo-audio-s2s
+
+MiMo Triton backend
+  Same audio machine as the wrapper
+  Port: 18000
+  Direct Triton model: mimo_audio_s2s
+```
+
+To check the Tailscale IP of the machine you are on:
+
+```bash
+tailscale ip -4
+```
+
+If `tailscale` is not in your shell path, inspect the interface directly:
+
+```bash
+ip -4 addr show tailscale0
 ```
 
 Run the three modes:
@@ -57,4 +91,3 @@ src/            role-based tutorial modules
 docs/           concept notes
 outputs/        run outputs, ignored by git
 ```
-
