@@ -1,0 +1,11 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from mimo_s2s_gepa.skillopt import run_skillopt_gepa
+
+
+run_skillopt_gepa("configs/skillopt_gepa_light.yaml")

@@ -1,6 +1,10 @@
 # Concepts
 
-GEPA optimizes the MiMo S2S `instruction`.
+The basic GEPA path optimizes the MiMo S2S `instruction`.
+
+The SkillOpt GEPA path optimizes the DSPy prompt that proposes candidate
+OpenClaw `SKILL.md` text. It does not directly rewrite DSPy, GEPA, OpenClaw, or
+the live skill.
 
 The SkillOpt direction is about optimizing an OpenClaw `SKILL.md`, but this
 project no longer keeps the earlier offline candidate rewrite prototype. The
@@ -41,3 +45,7 @@ It also reads metadata, transcript channel, and duration diagnostics.
 The OpenClaw trajectory parser is separate from the DSPy evaluator. It records
 what the agent actually did, including whether it read the workspace skill,
 which commands it ran, and which generated wav path came back from S2S.
+
+For SkillOpt GEPA, the trajectory analyzer turns OpenClaw evidence into compact
+feedback. GEPA then improves the candidate proposer, and the metric validates
+each candidate with a fresh OpenClaw rollout.

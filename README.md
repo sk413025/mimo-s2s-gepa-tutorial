@@ -4,12 +4,15 @@ This is a small teaching project for optimizing MiMo-Audio S2S instructions and
 OpenClaw S2S skill text with DSPy.
 
 The point is not to train MiMo. MiMo S2S always remains the audio generation
-model. GEPA optimizes the text `instruction` that is sent to MiMo S2S.
+model. The basic GEPA mode optimizes the text `instruction` that is sent to MiMo
+S2S. The SkillOpt GEPA mode optimizes the DSPy proposer that writes candidate
+OpenClaw `SKILL.md` files.
 
-The SkillOpt direction is now grounded in real OpenClaw runs: the project first
-creates an isolated OpenClaw agent, runs the workspace `mimo-audio` S2S skill,
-exports the trajectory bundle, and parses the tool evidence. Candidate skill
-mutation is intentionally not wired in until this trajectory path is stable.
+The SkillOpt direction is grounded in real OpenClaw runs: the project creates an
+isolated OpenClaw agent, runs the workspace `mimo-audio` S2S skill, exports the
+trajectory bundle, parses the tool evidence, proposes candidate skill text, and
+validates candidates through fresh OpenClaw rollouts. The live skill is never
+overwritten automatically.
 
 ## Model Roles
 
@@ -76,6 +79,13 @@ skill_validation:
     -> run fresh candidate OpenClaw rollouts
     -> compare pass counts
     -> accept only on strict improvement
+
+skillopt_gepa:
+  trajectory_feedback.json + live SKILL.md
+    -> DSPy GEPA optimizes the skill candidate proposer prompt
+    -> each metric call writes a candidate SKILL.md
+    -> fresh OpenClaw candidate rollout scores the candidate
+    -> validation feedback is returned to GEPA
 ```
 
 ## Quick Start
@@ -130,6 +140,7 @@ python scripts/run_openclaw_rollout.py
 python scripts/analyze_rollouts.py
 python scripts/propose_skill_candidate.py
 python scripts/validate_skill_candidate.py
+python scripts/run_skillopt_gepa.py
 ```
 
 Outputs are saved under `outputs/<timestamp>_<mode>/`.
@@ -154,6 +165,9 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
 - `skill_validation`: run fresh baseline and candidate OpenClaw rollouts, then
   accept the candidate only if it strictly improves the pass count. Ties are
   rejected.
+- `skillopt_gepa`: use `dspy.GEPA` to optimize the candidate skill proposer.
+  The metric reuses the OpenClaw validation path, so feedback comes from fresh
+  candidate rollouts instead of only offline text review.
 
 Baseline and GEPA runs write `summary.json` and `predictions.json`.
 `openclaw_rollout` writes one subdirectory per task under `rollouts/`, plus a
@@ -164,6 +178,8 @@ while the run is active.
 `skill_candidate` writes an initial skill snapshot, candidate skill, diff, and
 `proposal.json`.
 `skill_validation` writes baseline/candidate rollout reports plus `decision.json`.
+`skillopt_gepa` writes a fresh baseline report, per-metric-call candidates and
+decisions, aggregate `stats.json`, plus a final candidate proposal.
 
 The generated wav files are written by the MiMo audio wrapper. The run summary
 records both `audio_path` and `audio_url`, for example:
@@ -234,6 +250,21 @@ outputs/<timestamp>_skill_validation/
   summary.json
   baseline_rollout/
   candidate_rollout/
+```
+
+SkillOpt GEPA runs add:
+
+```text
+outputs/<timestamp>_skillopt_gepa/
+  baseline_report.json
+  metric_calls/call_001/
+    candidate/SKILL.md
+    candidate_report.json
+    decision.json
+    metric_result.json
+  final_candidate/SKILL.md
+  stats.json
+  summary.json
 ```
 
 ## References

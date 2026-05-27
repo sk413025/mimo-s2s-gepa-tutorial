@@ -38,6 +38,7 @@ src/mimo_s2s_gepa/skillopt/
 - [x] Add a candidate `SKILL.md` proposer.
 - [x] Validate candidate skills through fresh OpenClaw rollouts.
 - [x] Add accept/reject promotion reports without touching the live skill.
+- [x] Add a DSPy GEPA stage that optimizes the skill candidate proposer.
 
 ## Acceptance Commands
 
@@ -49,6 +50,7 @@ python scripts/run_openclaw_rollout.py
 python scripts/analyze_rollouts.py
 python scripts/propose_skill_candidate.py
 python scripts/validate_skill_candidate.py
+python scripts/run_skillopt_gepa.py
 ```
 
 ## Expected OpenClaw Rollout Output
@@ -136,3 +138,30 @@ outputs/<timestamp>_skill_validation/
   accepted/rejected reason.
 - Candidate is accepted only when it passes more tasks than baseline; ties are
   rejected.
+
+## Expected SkillOpt GEPA Output
+
+```text
+outputs/<timestamp>_skillopt_gepa/
+  baseline_report.json
+  metric_calls/call_001/
+    proposal.json
+    candidate/SKILL.md
+    candidate_report.json
+    decision.json
+    metric_result.json
+  final_candidate/SKILL.md
+  final_candidate/proposal.json
+  stats.json
+  summary.json
+```
+
+## SkillOpt GEPA Criteria
+
+- `dspy.GEPA.compile(...)` is used on a DSPy program that proposes candidate
+  `SKILL.md` files.
+- GEPA optimizes the proposer prompt, not the OpenClaw runtime or DSPy itself.
+- Every metric call validates a candidate through fresh OpenClaw rollout.
+- The live OpenClaw skill is not overwritten.
+- Metric feedback includes baseline pass count, candidate pass count, decision
+  reason, and generated audio paths when present.

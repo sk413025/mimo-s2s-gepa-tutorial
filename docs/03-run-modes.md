@@ -65,3 +65,16 @@ Leave `skill_candidate_dir` empty in `configs/validate_skill_candidate.yaml` to
 use the latest `outputs/*_skill_candidate` directory. The validation stage
 rejects ties and only accepts a candidate when it passes more rollout tasks than
 the live baseline.
+
+`skillopt_gepa` uses DSPy GEPA to optimize the prompt behind the SkillOpt
+candidate proposer.
+
+```bash
+python scripts/run_skillopt_gepa.py
+```
+
+Leave `trajectory_analysis_dir` empty in `configs/skillopt_gepa_light.yaml` to
+use the latest `outputs/*_trajectory_analysis` directory. The metric writes a
+candidate skill for each GEPA metric call, validates it with fresh OpenClaw
+rollouts, and returns the validation decision as GEPA feedback. This mode does
+not overwrite the live OpenClaw skill.
