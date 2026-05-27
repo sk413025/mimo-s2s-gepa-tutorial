@@ -36,6 +36,7 @@ src/mimo_s2s_gepa/skillopt/
 - [x] Save one rollout subdirectory and summary per task.
 - [x] Add a trajectory analyzer that turns rollouts into structured feedback.
 - [x] Add a candidate `SKILL.md` proposer.
+- [x] Change candidate proposal to patch-level structured edits.
 - [x] Validate candidate skills through fresh OpenClaw rollouts.
 - [x] Add accept/reject promotion reports without touching the live skill.
 - [x] Add a DSPy GEPA stage that optimizes the skill candidate proposer.
@@ -106,6 +107,7 @@ outputs/<timestamp>_skill_candidate/
   initial/SKILL.md
   candidates/skill_v0001/SKILL.md
   candidates/skill_v0001/diff.md
+  candidates/skill_v0001/edits.json
   proposal.json
   summary.json
 ```
@@ -113,10 +115,12 @@ outputs/<timestamp>_skill_candidate/
 ## Candidate Criteria
 
 - The live OpenClaw skill is not overwritten.
+- The proposer returns 1-3 structured edits, not a full `SKILL.md` rewrite.
 - The candidate keeps YAML frontmatter and `name: mimo-audio`.
 - The candidate remains scoped to MiMo-Audio S2S / LDV restoration.
 - The candidate keeps `mimo_audio_s2s`, health, `s2s`, and `s2s-smoke` guidance.
 - The candidate does not introduce TTS or unrelated workflows.
+- Invalid edits are rejected before rollout.
 
 ## Expected Skill Validation Output
 
@@ -155,11 +159,13 @@ outputs/<timestamp>_skillopt_gepa/
   baseline_report.json
   metric_calls/call_001/
     proposal.json
+    candidate/edits.json
     candidate/SKILL.md
     candidate_report.json
     decision.json
     metric_result.json
   final_candidate/SKILL.md
+  final_candidate/edits.json
   final_candidate/proposal.json
   stats.json
   summary.json
@@ -167,8 +173,8 @@ outputs/<timestamp>_skillopt_gepa/
 
 ## SkillOpt GEPA Criteria
 
-- `dspy.GEPA.compile(...)` is used on a DSPy program that proposes candidate
-  `SKILL.md` files.
+- `dspy.GEPA.compile(...)` is used on a DSPy program that proposes structured
+  skill edits.
 - GEPA optimizes the proposer prompt, not the OpenClaw runtime or DSPy itself.
 - Every metric call validates a candidate through fresh OpenClaw rollout.
 - The live OpenClaw skill is not overwritten.

@@ -68,9 +68,10 @@ trajectory_analysis:
 
 skill_candidate:
   live OpenClaw SKILL.md + trajectory_feedback.json
-    -> Gemma4 proposes a complete candidate SKILL.md
+    -> Gemma4 proposes small structured edits
+    -> apply edits to produce a candidate SKILL.md
     -> validate candidate scope and required S2S fields
-    -> write candidate file and diff
+    -> write candidate file, edits, and diff
     -> do not overwrite the live skill
 
 skill_validation:
@@ -159,9 +160,10 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
 - `trajectory_analysis`: ask Gemma4 to analyze a rollout run and produce
   structured SkillOpt feedback. This stage only writes analysis files; it does
   not write or edit candidate skills.
-- `skill_candidate`: ask Gemma4 to propose a complete candidate `SKILL.md` from
-  trajectory feedback. This stage writes candidate artifacts and a diff, but it
-  does not overwrite the live OpenClaw skill.
+- `skill_candidate`: ask Gemma4 to propose small structured edits from
+  trajectory feedback. The project applies those edits to produce a candidate
+  `SKILL.md`, writes candidate artifacts and a diff, but does not overwrite the
+  live OpenClaw skill.
 - `skill_validation`: run fresh baseline and candidate OpenClaw rollouts, then
   accept the candidate only if it strictly improves the validation score. Ties are
   rejected.
@@ -175,8 +177,8 @@ top-level `rollout_report.json`. Progress is reported through Python logging
 while the run is active.
 `trajectory_analysis` writes `trajectory_feedback.json` and
 `rollout_evidence.json`.
-`skill_candidate` writes an initial skill snapshot, candidate skill, diff, and
-`proposal.json`.
+`skill_candidate` writes an initial skill snapshot, structured edits, candidate
+skill, diff, and `proposal.json`.
 `skill_validation` writes baseline/candidate rollout reports plus `decision.json`.
 `skillopt_gepa` writes a fresh baseline report, per-metric-call candidates and
 decisions, aggregate `stats.json`, plus a final candidate proposal.
@@ -238,6 +240,7 @@ outputs/<timestamp>_skill_candidate/
   initial/SKILL.md
   candidates/skill_v0001/SKILL.md
   candidates/skill_v0001/diff.md
+  candidates/skill_v0001/edits.json
   proposal.json
   summary.json
 ```
@@ -271,11 +274,14 @@ SkillOpt GEPA runs add:
 outputs/<timestamp>_skillopt_gepa/
   baseline_report.json
   metric_calls/call_001/
+    proposal.json
+    candidate/edits.json
     candidate/SKILL.md
     candidate_report.json
     decision.json
     metric_result.json
   final_candidate/SKILL.md
+  final_candidate/edits.json
   stats.json
   summary.json
 ```

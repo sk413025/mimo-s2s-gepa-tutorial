@@ -12,7 +12,7 @@ from ..config import PROJECT_ROOT, load_config, resolve_path
 from ..runner import make_run_dir, save_json
 from .openclaw_skill import read_live_skill
 from .skill_candidate import (
-    ProposeSkillCandidate,
+    ProposeSkillEdits,
     build_proposer_lm,
     clean_candidate_skill,
     find_latest_analysis_dir,
@@ -20,6 +20,7 @@ from .skill_candidate import (
     proposal_constraints,
     validate_candidate_skill,
 )
+from .patching import apply_skill_edits, parse_edits_json, validate_edits
 from .trajectory_analyzer import load_json
 from .validation_gate import build_decision, run_rollout_set
 
@@ -31,7 +32,7 @@ class SkillCandidateProgram(dspy.Module):
 
     def __init__(self):
         super().__init__()
-        self.proposer = dspy.Predict(ProposeSkillCandidate)
+        self.proposer = dspy.Predict(ProposeSkillEdits)
 
     def forward(
         self,
@@ -45,7 +46,7 @@ class SkillCandidateProgram(dspy.Module):
             constraints=constraints,
         )
         return dspy.Prediction(
-            candidate_skill_md=str(prediction.candidate_skill_md),
+            edits_json=str(prediction.edits_json),
             proposal_notes_json=str(prediction.proposal_notes_json),
         )
 
@@ -71,26 +72,37 @@ def build_skillopt_example(config: dict[str, Any], analysis_dir: Path) -> dspy.E
 def write_candidate_artifacts(
     *,
     call_dir: Path,
-    candidate_skill: str,
+    initial_skill: str,
     raw_prediction: dspy.Prediction,
     validation_errors: list[str],
-) -> Path:
+) -> tuple[Path, str, list[dict[str, Any]]]:
     candidate_dir = call_dir / "candidate"
     candidate_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        edits = parse_edits_json(str(raw_prediction.edits_json))
+        validation_errors.extend(validate_edits(edits))
+        candidate_skill = clean_candidate_skill(apply_skill_edits(initial_skill, edits))
+    except Exception as exc:
+        edits = []
+        candidate_skill = initial_skill
+        validation_errors.append(f"failed to apply patch edits: {exc}")
+
     candidate_path = candidate_dir / "SKILL.md"
     candidate_path.write_text(candidate_skill, encoding="utf-8")
     notes = parse_notes_json(str(raw_prediction.proposal_notes_json))
+    save_json(candidate_dir / "edits.json", edits)
     save_json(
         call_dir / "proposal.json",
         {
             "candidate_skill_path": str(candidate_path),
             "validation_errors": validation_errors,
+            "patch_edits": edits,
             "proposal_notes": notes,
-            "raw_candidate_skill_md": str(raw_prediction.candidate_skill_md),
+            "raw_edits_json": str(raw_prediction.edits_json),
             "raw_proposal_notes_json": str(raw_prediction.proposal_notes_json),
         },
     )
-    return candidate_path
+    return candidate_path, candidate_skill, edits
 
 
 def candidate_audio_paths(report: dict[str, Any]) -> list[str]:
@@ -124,20 +136,20 @@ class SkillOptGepaMetric:
         pred_name: str | None = None,
         pred_trace: Any | None = None,
     ) -> ScoreWithFeedback:
-        del gold, trace, pred_name, pred_trace
+        del trace, pred_name, pred_trace
         self.call_index += 1
         call_dir = self.run_dir / "metric_calls" / f"call_{self.call_index:03d}"
         call_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            candidate_skill = clean_candidate_skill(str(pred.candidate_skill_md))
-            validation_errors = validate_candidate_skill(candidate_skill)
-            candidate_path = write_candidate_artifacts(
+            validation_errors: list[str] = []
+            candidate_path, candidate_skill, _ = write_candidate_artifacts(
                 call_dir=call_dir,
-                candidate_skill=candidate_skill,
+                initial_skill=str(gold.current_skill_md),
                 raw_prediction=pred,
                 validation_errors=validation_errors,
             )
+            validation_errors.extend(validate_candidate_skill(candidate_skill))
 
             if validation_errors:
                 feedback = "Candidate SKILL.md failed static validation: " + "; ".join(validation_errors)
@@ -208,17 +220,27 @@ def save_final_candidate(
 ) -> dict[str, Any]:
     with dspy.context(lm=build_proposer_lm(config)):
         prediction = program(**example.inputs())
-    candidate_skill = clean_candidate_skill(str(prediction.candidate_skill_md))
-    validation_errors = validate_candidate_skill(candidate_skill)
+    validation_errors: list[str] = []
+    try:
+        edits = parse_edits_json(str(prediction.edits_json))
+        validation_errors.extend(validate_edits(edits))
+        candidate_skill = clean_candidate_skill(apply_skill_edits(str(example.current_skill_md), edits))
+    except Exception as exc:
+        edits = []
+        candidate_skill = str(example.current_skill_md)
+        validation_errors.append(f"failed to apply patch edits: {exc}")
+    validation_errors.extend(validate_candidate_skill(candidate_skill))
     final_dir = run_dir / "final_candidate"
     final_dir.mkdir(parents=True, exist_ok=True)
     candidate_path = final_dir / "SKILL.md"
     candidate_path.write_text(candidate_skill, encoding="utf-8")
+    save_json(final_dir / "edits.json", edits)
     result = {
         "candidate_skill_path": str(candidate_path),
         "validation_errors": validation_errors,
+        "patch_edits": edits,
         "proposal_notes": parse_notes_json(str(prediction.proposal_notes_json)),
-        "raw_candidate_skill_md": str(prediction.candidate_skill_md),
+        "raw_edits_json": str(prediction.edits_json),
         "raw_proposal_notes_json": str(prediction.proposal_notes_json),
     }
     save_json(final_dir / "proposal.json", result)

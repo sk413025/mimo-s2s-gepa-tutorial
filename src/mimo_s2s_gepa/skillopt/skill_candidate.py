@@ -11,6 +11,7 @@ import dspy
 from ..config import PROJECT_ROOT, load_config, resolve_path
 from ..runner import make_run_dir, save_json
 from .openclaw_skill import read_live_skill
+from .patching import apply_skill_edits, parse_edits_json, validate_edits
 from .trajectory_analyzer import load_json
 
 LOGGER = logging.getLogger(__name__)
@@ -24,17 +25,17 @@ FORBIDDEN_TERMS = (
 )
 
 
-class ProposeSkillCandidate(dspy.Signature):
-    """Propose a complete OpenClaw SKILL.md candidate from SkillOpt feedback."""
+class ProposeSkillEdits(dspy.Signature):
+    """Propose small structured edits to the OpenClaw SKILL.md from SkillOpt feedback."""
 
     current_skill_md: str = dspy.InputField()
     trajectory_feedback: str = dspy.InputField()
     constraints: str = dspy.InputField()
-    candidate_skill_md: str = dspy.OutputField(
+    edits_json: str = dspy.OutputField(
         desc=(
-            "A complete replacement SKILL.md. Preserve YAML frontmatter and "
-            "`name: mimo-audio`. Keep it scoped to MiMo-Audio S2S / LDV "
-            "restoration. Do not introduce TTS or unrelated workflows."
+            "A valid JSON array of 1-3 edit objects. Allowed ops: "
+            "append_after_heading, insert_after_text, replace_text, append_to_end. "
+            "Keep edits small and grounded in trajectory feedback."
         )
     )
     proposal_notes_json: str = dspy.OutputField(
@@ -147,10 +148,17 @@ def build_proposer_lm(config: dict[str, Any]) -> dspy.LM:
 def proposal_constraints() -> str:
     return "\n".join(
         [
-            "Return a complete SKILL.md, not a patch.",
-            "Do not wrap the SKILL.md in markdown code fences.",
+            "Return only a JSON array of 1-3 edit objects for SKILL.md.",
+            "Do not return a complete SKILL.md.",
+            "Do not wrap the JSON in markdown code fences.",
+            "Allowed edit ops:",
+            "- append_after_heading: {\"op\":\"append_after_heading\",\"heading\":\"## Workflow\",\"text\":\"...\"}",
+            "- insert_after_text: {\"op\":\"insert_after_text\",\"anchor\":\"exact existing text\",\"text\":\"...\"}",
+            "- replace_text: {\"op\":\"replace_text\",\"old_text\":\"exact existing text\",\"new_text\":\"...\"}",
+            "- append_to_end: {\"op\":\"append_to_end\",\"text\":\"...\"}",
             "Make at least one small real content edit grounded in the trajectory feedback.",
-            "Preserve YAML frontmatter and keep `name: mimo-audio`.",
+            "Prefer append_after_heading or insert_after_text over replacing large sections.",
+            "Do not edit YAML frontmatter or change `name: mimo-audio`.",
             "Keep the skill focused only on MiMo-Audio S2S / LDV restoration.",
             "Do not add TTS, generic audio generation, chat, or unrelated tool workflows.",
             "Keep wrapper commands executable with the existing absolute skill path.",
@@ -167,6 +175,7 @@ def write_candidate_outputs(
     initial_skill: str,
     candidate_skill: str,
     proposal: dict[str, Any],
+    edits: list[dict[str, Any]],
 ) -> None:
     initial_dir = run_dir / "initial"
     candidate_dir = run_dir / "candidates" / "skill_v0001"
@@ -176,6 +185,7 @@ def write_candidate_outputs(
     (initial_dir / "SKILL.md").write_text(initial_skill, encoding="utf-8")
     (candidate_dir / "SKILL.md").write_text(candidate_skill, encoding="utf-8")
     (candidate_dir / "diff.md").write_text(build_unified_diff(initial_skill, candidate_skill), encoding="utf-8")
+    save_json(candidate_dir / "edits.json", edits)
     save_json(run_dir / "proposal.json", proposal)
     save_json(run_dir / "summary.json", proposal)
 
@@ -186,7 +196,7 @@ def propose_candidate(config: dict[str, Any], analysis_dir: Path, run_dir: Path)
     feedback = load_json(analysis_dir / "trajectory_feedback.json")
     feedback_text = json.dumps(feedback, ensure_ascii=False, indent=2)
 
-    proposer = dspy.Predict(ProposeSkillCandidate)
+    proposer = dspy.Predict(ProposeSkillEdits)
     with dspy.context(lm=build_proposer_lm(config)):
         prediction = proposer(
             current_skill_md=initial_skill,
@@ -194,8 +204,17 @@ def propose_candidate(config: dict[str, Any], analysis_dir: Path, run_dir: Path)
             constraints=proposal_constraints(),
         )
 
-    candidate_skill = clean_candidate_skill(str(prediction.candidate_skill_md))
-    validation_errors = validate_candidate_skill(candidate_skill)
+    validation_errors: list[str] = []
+    try:
+        edits = parse_edits_json(str(prediction.edits_json))
+        validation_errors.extend(validate_edits(edits))
+        candidate_skill = clean_candidate_skill(apply_skill_edits(initial_skill, edits))
+    except Exception as exc:
+        edits = []
+        candidate_skill = initial_skill
+        validation_errors.append(f"failed to apply patch edits: {exc}")
+
+    validation_errors.extend(validate_candidate_skill(candidate_skill))
     if initial_skill.strip() == candidate_skill.strip():
         validation_errors.append("candidate skill must contain at least one real content change")
     proposal_notes = parse_notes_json(str(prediction.proposal_notes_json))
@@ -210,6 +229,7 @@ def propose_candidate(config: dict[str, Any], analysis_dir: Path, run_dir: Path)
         "candidate_skill_path": str(run_dir / "candidates" / "skill_v0001" / "SKILL.md"),
         "candidate_diff_path": str(run_dir / "candidates" / "skill_v0001" / "diff.md"),
         "validation_errors": validation_errors,
+        "patch_edits": edits,
         "changed": initial_skill.strip() != candidate_skill.strip(),
         "diff_line_count": len(
             [
@@ -220,7 +240,7 @@ def propose_candidate(config: dict[str, Any], analysis_dir: Path, run_dir: Path)
             ]
         ),
         "proposal_notes": proposal_notes,
-        "raw_candidate_skill_md": str(prediction.candidate_skill_md),
+        "raw_edits_json": str(prediction.edits_json),
         "raw_proposal_notes_json": str(prediction.proposal_notes_json),
     }
     write_candidate_outputs(
@@ -228,6 +248,7 @@ def propose_candidate(config: dict[str, Any], analysis_dir: Path, run_dir: Path)
         initial_skill=initial_skill,
         candidate_skill=candidate_skill,
         proposal=proposal,
+        edits=edits,
     )
 
     if validation_errors:
