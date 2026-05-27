@@ -8,9 +8,14 @@ The point is not to train MiMo. GEPA rewrites the text `instruction` that is sen
 Hank sample data
   -> Gemma4 vLLM writes an instruction
   -> MiMo S2S wrapper restores the audio
-  -> metric returns score + feedback
+  -> evaluator returns score + feedback
   -> GEPA can try a better instruction
 ```
+
+In `baseline` and `gepa`, Gemma4 is also used as the evaluator. The evaluator
+uses a DSPy multimodal field, `generated_audio: dspy.Audio = dspy.InputField()`,
+so Gemma4 can listen to the generated wav. It combines that with the run
+metadata, transcript channel, and rule-based evidence.
 
 ## Quick Start
 
@@ -77,6 +82,7 @@ Each run writes `summary.json`, including logical counters:
 {
   "task_lm_calls": 1,
   "reflection_lm_calls": 0,
+  "evaluator_lm_calls": 1,
   "mimo_s2s_calls": 5
 }
 ```

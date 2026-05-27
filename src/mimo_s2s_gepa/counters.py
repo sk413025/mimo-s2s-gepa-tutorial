@@ -1,6 +1,7 @@
 COUNTERS = {
     "task_lm_calls": 0,
     "reflection_lm_calls": 0,
+    "evaluator_lm_calls": 0,
     "mimo_s2s_calls": 0,
 }
 
@@ -12,4 +13,3 @@ def reset_counters() -> None:
 
 def snapshot_counters() -> dict[str, int]:
     return dict(COUNTERS)
-

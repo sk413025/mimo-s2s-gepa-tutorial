@@ -11,7 +11,7 @@ from .config import PROJECT_ROOT, load_config
 from .counters import reset_counters, snapshot_counters
 from .data import load_examples, split_examples
 from .lm import CountingLM
-from .metrics import metric
+from .metrics import build_metric
 from .program import MiMoS2SProgram
 
 
@@ -47,8 +47,12 @@ def make_run_dir(config: dict[str, Any], mode: str) -> Path:
     return run_dir
 
 
-def prediction_to_dict(example: dspy.Example, prediction: dspy.Prediction) -> dict[str, Any]:
-    scored = metric(example, prediction)
+def prediction_to_dict(
+    example: dspy.Example,
+    prediction: dspy.Prediction,
+    metric_fn,
+) -> dict[str, Any]:
+    scored = metric_fn(example, prediction)
     return {
         "id": example.id,
         "instruction": prediction.instruction,
@@ -84,10 +88,11 @@ def run(config_path: str, mode: str) -> Path:
 
     fixed_instruction = config.get("fixed_instruction", "") if mode == "smoke" else ""
     program = MiMoS2SProgram(config, fixed_instruction=fixed_instruction)
+    metric_fn = build_metric(config)
 
     if mode == "gepa":
         optimizer = dspy.GEPA(
-            metric=metric,
+            metric=metric_fn,
             reflection_lm=build_reflection_lm(config),
             max_metric_calls=int(config.get("max_metric_calls", 4)),
             reflection_minibatch_size=int(config.get("reflection_minibatch_size", 1)),
@@ -100,7 +105,7 @@ def run(config_path: str, mode: str) -> Path:
     outputs = []
     for example in valset:
         prediction = program(**example.inputs())
-        outputs.append(prediction_to_dict(example, prediction))
+        outputs.append(prediction_to_dict(example, prediction, metric_fn))
         print(json.dumps(outputs[-1], ensure_ascii=False, indent=2))
 
     summary = {
@@ -116,4 +121,3 @@ def run(config_path: str, mode: str) -> Path:
     save_json(run_dir / "predictions.json", outputs)
     print(f"saved_run_dir={run_dir}")
     return run_dir
-
