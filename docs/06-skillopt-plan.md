@@ -1,60 +1,71 @@
-# SkillOpt Implementation Plan
+# SkillOpt Implementation Notes
 
-This project extends the original baseline and GEPA tutorial toward a real
-SkillOpt-style loop for the OpenClaw `mimo-audio` skill. The earlier offline
-candidate rewrite prototype has been removed so the project can focus on real
-OpenClaw trajectories.
+This is the advanced implementation note for the SkillOpt part of the tutorial.
+For normal usage, start with the README and `docs/03-run-modes.md`.
 
-The live OpenClaw skill stays in:
+## Goal
+
+The project demonstrates a SkillOpt-style loop without modifying DSPy, GEPA,
+OpenClaw, or the live OpenClaw skill.
+
+```text
+current OpenClaw mimo-audio skill
+  -> fresh OpenClaw rollout
+  -> exported trajectory
+  -> Gemma4 trajectory analysis
+  -> DSPy GEPA optimizes the skill-edit proposer prompt
+  -> candidate SKILL.md
+  -> fresh OpenClaw validation
+  -> accept/reject decision
+```
+
+The live skill stays here:
 
 ```text
 /home/sbplab/.openclaw/workspace/skills/mimo-audio/SKILL.md
 ```
 
-The tutorial project owns isolated OpenClaw runs, trajectory export, trajectory
-parsing, and later candidate validation. It must never overwrite the live skill
-automatically.
+The tutorial copies that skill into isolated OpenClaw workspaces for rollout and
+validation. It never overwrites the live file.
 
-SkillOpt-specific code lives under:
+## Implemented Pieces
+
+- `scripts/run_skillopt.py` is the single beginner-facing SkillOpt entrypoint.
+- `collect` creates an isolated OpenClaw agent and exports a trajectory bundle.
+- `analyze` turns rollout evidence into structured feedback with Gemma4.
+- `optimize` runs `dspy.GEPA.compile(...)` on a DSPy program that proposes
+  structured skill edits.
+- `validate` compares baseline and candidate skills with fresh OpenClaw rollouts.
+- `promote` writes a review-only diff package and does not apply changes.
+
+The old offline candidate rewrite path and duplicate stage scripts have been
+removed. Candidate generation now goes through the DSPy GEPA proposer path.
+
+## Key Modules
 
 ```text
 src/mimo_s2s_gepa/skillopt/
+  rollout.py              OpenClaw rollout orchestration
+  trajectory_parser.py    OpenClaw trajectory parsing
+  trajectory_analyzer.py  Gemma4 trajectory feedback
+  candidate_edits.py      DSPy signature and edit constraints
+  skillopt_gepa.py        DSPy GEPA proposer optimization
+  validation_gate.py      baseline vs candidate rollout comparison
+  promotion.py            review-only candidate diff package
 ```
 
-## Tracking Checklist
+## Acceptance Checks
 
-- [x] Keep baseline and GEPA modes intact.
-- [x] Remove the old offline candidate rewrite path.
-- [x] Add `configs/collect_rollouts.yaml`.
-- [x] Add `scripts/run_skillopt.py` as the beginner-facing SkillOpt entrypoint.
-- [x] Create a temporary isolated OpenClaw agent and workspace.
-- [x] Copy the live `mimo-audio` skill into that workspace.
-- [x] Run health plus Hank `s2s-smoke` through OpenClaw.
-- [x] Export and parse the OpenClaw trajectory bundle.
-- [x] Require generated audio for the OpenClaw rollout acceptance gate.
-- [x] Add a task dataset for repeated OpenClaw rollouts.
-- [x] Save one rollout subdirectory and summary per task.
-- [x] Add a trajectory analyzer that turns rollouts into structured feedback.
-- [x] Add a DSPy GEPA candidate `SKILL.md` proposer.
-- [x] Keep candidate proposal to patch-level structured edits.
-- [x] Validate candidate skills through fresh OpenClaw rollouts.
-- [x] Add accept/reject promotion reports without touching the live skill.
-- [x] Add a DSPy GEPA stage that optimizes the skill candidate proposer.
-- [x] Add stricter guided and skill-driven validation tasks.
-- [x] Add candidate registry/history across runs.
-- [x] Remove the standalone non-GEPA candidate proposal stage.
-- [x] Remove duplicate single-stage scripts; `scripts/run_skillopt.py` is the
-  only beginner-facing SkillOpt entrypoint.
-- [x] Split OpenClaw rollout collection into CLI, task, message, validation,
-  and orchestration modules.
-
-## Acceptance Commands
+Use these after changing code:
 
 ```bash
 python -m py_compile scripts/*.py src/mimo_s2s_gepa/*.py src/mimo_s2s_gepa/skillopt/*.py
-python scripts/run_baseline.py
-python scripts/run_gepa.py
-python scripts/run_skillopt.py
+python scripts/run_skillopt.py --help
+```
+
+Use these for live integration checks when the services are available:
+
+```bash
 python scripts/run_skillopt.py collect
 python scripts/run_skillopt.py analyze
 python scripts/run_skillopt.py optimize
@@ -62,130 +73,59 @@ python scripts/run_skillopt.py validate
 python scripts/run_skillopt.py promote
 ```
 
-## Expected OpenClaw Rollout Output
+## What To Inspect
+
+After `collect`:
 
 ```text
-outputs/<timestamp>_openclaw_rollout/
-  rollout_report.json
-  rollouts/<task_id>/
-    task.json
-    openclaw_result.json
-    parsed_result.json
-    rollout_summary.json
-    trajectory/
-      manifest.json
-      events.jsonl
-      artifacts.json
-      prompts.json
-      system-prompt.txt
-      tools.json
+outputs/*_openclaw_rollout/rollout_report.json
+outputs/*_openclaw_rollout/rollouts/<task_id>/trajectory/
 ```
 
-## Acceptance Criteria
-
-- The live OpenClaw skill is not overwritten.
-- OpenClaw reads the isolated workspace `mimo-audio/SKILL.md`.
-- OpenClaw executes the wrapper health command and `s2s-smoke`.
-- The exported trajectory contains tool calls and tool results.
-- `parsed_result.json` includes `final_status: success` and a generated
-  `audio_path`.
-- Temporary OpenClaw agents are deleted after each run.
-
-## Expected Trajectory Analysis Output
+After `analyze`:
 
 ```text
-outputs/<timestamp>_trajectory_analysis/
-  trajectory_feedback.json
-  rollout_evidence.json
-  summary.json
+outputs/*_trajectory_analysis/trajectory_feedback.json
 ```
 
-## Analysis Criteria
-
-- The analyzer reads rollout outputs, not the live OpenClaw session directly.
-- Gemma4 returns structured feedback with success patterns, failure patterns,
-  skill issues, suggested changes, evidence, and next validation tasks.
-- The analyzer does not create or modify any candidate `SKILL.md`.
-
-## Expected Skill Validation Output
+After `optimize`:
 
 ```text
-outputs/<timestamp>_skill_validation/
-  baseline_report.json
-  candidate_report.json
-  decision.json
-  summary.json
-  baseline_rollout/
-  candidate_rollout/
+outputs/*_skillopt_gepa/final_candidate/SKILL.md
+outputs/*_skillopt_gepa/final_candidate/edits.json
+outputs/*_skillopt_gepa/stats.json
+```
+
+After `validate`:
+
+```text
+outputs/*_skill_validation/decision.json
+```
+
+After `promote`:
+
+```text
+outputs/*_skill_promotion/diff.md
+outputs/*_skill_promotion/candidate/SKILL.md
+outputs/*_skill_promotion/live_before/SKILL.md
+```
+
+## Design Boundaries
+
+- GEPA optimizes the DSPy proposer prompt, not OpenClaw itself.
+- OpenClaw trajectories come from real OpenClaw runs, not DSPy traces.
+- Candidate skills are validated with fresh rollouts.
+- Acceptance requires the candidate score to be higher than the baseline score.
+- The promotion stage is review-only.
+
+## Advanced Traceability
+
+The code also keeps an append-only candidate registry under:
+
+```text
 outputs/candidate_registry.jsonl
 ```
 
-## Validation Criteria
-
-- Baseline and candidate both use fresh OpenClaw rollouts.
-- Candidate rollout uses `outputs/<timestamp>_skillopt_gepa/final_candidate/SKILL.md`.
-- The live OpenClaw skill is not overwritten.
-- `decision.json` records pass counts, validation scores, rollout directories,
-  candidate path, and accepted/rejected reason.
-- Candidate is accepted only when it scores higher than baseline; ties are
-  rejected.
-- Validation tasks check required tool names, command evidence, generated audio
-  path or URL, backend, and generated wav file existence.
-- Skill-driven tasks require OpenClaw to derive wrapper commands from the
-  workspace `SKILL.md` instead of receiving the exact smoke command from the
-  harness.
-- Clean first-turn completion scores higher than completion that needs a
-  continuation turn, so validation can distinguish fragile task execution from
-  direct success.
-- Validation appends a `candidate_validated` registry row with decision, scores,
-  audio paths, and continuation-task flags.
-
-## Expected SkillOpt GEPA Output
-
-```text
-outputs/<timestamp>_skillopt_gepa/
-  baseline_report.json
-  metric_calls/call_001/
-    proposal.json
-    candidate/edits.json
-    candidate/SKILL.md
-    candidate_report.json
-    decision.json
-    metric_result.json
-  final_candidate/SKILL.md
-  final_candidate/edits.json
-  final_candidate/proposal.json
-  stats.json
-  summary.json
-```
-
-## SkillOpt GEPA Criteria
-
-- `dspy.GEPA.compile(...)` is used on a DSPy program that proposes structured
-  skill edits.
-- GEPA optimizes the proposer prompt, not the OpenClaw runtime or DSPy itself.
-- Every metric call validates a candidate through fresh OpenClaw rollout.
-- The live OpenClaw skill is not overwritten.
-- Metric feedback includes baseline pass count, candidate pass count,
-  validation scores, decision reason, and generated audio paths when present.
-- Every GEPA metric candidate and final candidate is registered with hashes and
-  patch edits.
-
-## Expected Skill Promotion Output
-
-```text
-outputs/<timestamp>_skill_promotion/
-  promotion_report.json
-  summary.json
-  diff.md
-  candidate/SKILL.md
-  live_before/SKILL.md
-```
-
-## Promotion Criteria
-
-- Promotion is review-only and does not overwrite the live OpenClaw skill.
-- The report records the validation directory, decision, live skill path,
-  candidate path, before/after hashes, diff path, and live-snapshot path.
-- The tutorial does not include an apply path. A human should review the diff
-  and copy the candidate into OpenClaw outside this beginner flow if needed.
+This is useful for comparing multiple runs, but it is not needed to understand
+the beginner flow. The primary teaching artifacts are the per-run `summary.json`,
+`trajectory_feedback.json`, candidate `SKILL.md`, and `decision.json` files.

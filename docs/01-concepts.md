@@ -1,51 +1,50 @@
 # Concepts
 
-The basic GEPA path optimizes the MiMo S2S `instruction`.
+This project has two related but different optimization examples.
 
-The SkillOpt GEPA path optimizes the DSPy prompt that proposes candidate
-OpenClaw `SKILL.md` text. It does not directly rewrite DSPy, GEPA, OpenClaw, or
-the live skill.
+## GEPA For MiMo S2S Instructions
 
-The SkillOpt direction is about optimizing an OpenClaw `SKILL.md`, but this
-project no longer keeps the earlier offline candidate rewrite prototype. The
-current SkillOpt foundation is the real OpenClaw trajectory path:
+The basic GEPA path optimizes the text `instruction` sent to MiMo S2S.
 
 ```text
-OpenClaw agent + workspace mimo-audio skill
-  -> read SKILL.md
-  -> run health and s2s-smoke through exec
-  -> export trajectory bundle
-  -> parse tool calls, tool results, final text, and generated audio
+sample -> Gemma4 writes instruction -> MiMo S2S generates wav
+       -> Gemma4 evaluates wav -> GEPA revises instruction-writing prompt
 ```
 
-Gemma4 is the text model. It has three roles in this tutorial:
+MiMo S2S is always the audio model. It receives the instruction and input audio,
+then writes the generated wav.
 
-- task LM: writes the MiMo S2S instruction
-- reflection LM: helps GEPA revise the instruction-writing prompt
-- evaluator LM: listens to the generated wav and turns run evidence into score
-  and feedback
+Gemma4 has three roles in this path:
 
-MiMo S2S is the audio model. It receives:
+- task LM: writes the S2S instruction
+- evaluator LM: listens to the generated wav and returns score plus feedback
+- reflection LM: helps GEPA revise the task prompt
 
-- `instruction`
-- input audio path
-- `prompt_examples_json`
-- decoding settings
-
-The evaluator gives GEPA a numeric score and plain-language feedback.
-
-The Gemma4 evaluator receives the generated wav through a DSPy multimodal field:
+The evaluator uses DSPy multimodal input:
 
 ```python
 generated_audio: dspy.Audio = dspy.InputField()
 ```
 
-It also reads metadata, transcript channel, and duration diagnostics.
+## SkillOpt-Style OpenClaw Skill Optimization
 
-The OpenClaw trajectory parser is separate from the DSPy evaluator. It records
-what the agent actually did, including whether it read the workspace skill,
-which commands it ran, and which generated wav path came back from S2S.
+The SkillOpt path is about OpenClaw skill text, not direct MiMo instructions.
 
-For SkillOpt GEPA, the trajectory analyzer turns OpenClaw evidence into compact
-feedback. GEPA then improves the candidate proposer, and the metric validates
-each candidate with a fresh OpenClaw rollout.
+```text
+OpenClaw runs current mimo-audio SKILL.md
+  -> trajectory is exported
+  -> Gemma4 analyzes what happened
+  -> DSPy GEPA improves the skill-edit proposer prompt
+  -> candidate SKILL.md is validated by fresh OpenClaw rollouts
+```
+
+GEPA optimizes the DSPy proposer. The proposer writes structured edits for a
+candidate `SKILL.md`. The project does not modify DSPy, GEPA, OpenClaw, or the
+live OpenClaw skill automatically.
+
+The important distinction:
+
+```text
+basic GEPA:   optimize the prompt that writes MiMo S2S instructions
+SkillOpt:     optimize the prompt that proposes OpenClaw SKILL.md edits
+```
