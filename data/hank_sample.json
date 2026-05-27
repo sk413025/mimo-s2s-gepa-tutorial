@@ -1,0 +1,21 @@
+[
+  {
+    "id": "s01_m01_ref295",
+    "input_audio": "/home/sbplab/Hank/MiMo-Audio/outputs/investigation_ldv_adapter_20260522/data_prompt_calibeq_20260526/calibeq_gs100_c6_wet100_clean_ref295_val/audio_links/calibrated_eq/s01_m01/s01_m01_ref295_calibeq.wav",
+    "reference_audio": "/home/sbplab/Hank/MiMo-Audio/outputs/investigation_ldv_adapter_20260522/data/clean10_v1/audio_links/clean/s01_m01_ref295.wav",
+    "prompt_examples_json": "/home/sbplab/Hank/MiMo-Audio/outputs/investigation_ldv_adapter_20260522/data_prompt_calibeq_20260526/calibeq_gs100_c6_wet100_clean_ref295_val/by_pair/s01_m01_prompt_examples_5shot.json",
+    "transcript": "廚師在節目裡表演拉麵",
+    "speaker": "佳",
+    "material": "塑膠杯"
+  },
+  {
+    "id": "s01_m02_ref295",
+    "input_audio": "/home/sbplab/Hank/MiMo-Audio/outputs/investigation_ldv_adapter_20260522/data_prompt_calibeq_20260526/calibeq_gs100_c6_wet100_clean_ref295_val/audio_links/calibrated_eq/s01_m02/s01_m02_ref295_calibeq.wav",
+    "reference_audio": "/home/sbplab/Hank/MiMo-Audio/outputs/investigation_ldv_adapter_20260522/data/clean10_v1/audio_links/clean/s01_m02_ref295.wav",
+    "prompt_examples_json": "/home/sbplab/Hank/MiMo-Audio/outputs/investigation_ldv_adapter_20260522/data_prompt_calibeq_20260526/calibeq_gs100_c6_wet100_clean_ref295_val/by_pair/s01_m02_prompt_examples_5shot.json",
+    "transcript": "廚師在節目裡表演拉麵",
+    "speaker": "佳",
+    "material": "壓克力"
+  }
+]
+

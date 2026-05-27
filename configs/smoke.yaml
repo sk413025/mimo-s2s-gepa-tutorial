@@ -1,0 +1,21 @@
+gemma_base_url: "http://100.70.253.93:8000/v1"
+gemma_model: "openai/google/gemma-4-E4B-it"
+gemma_api_key: "sk-local"
+
+mimo_base_url: "http://127.0.0.1:19080/v1"
+mimo_model: "openai/mimo-audio-s2s"
+mimo_api_key: "sk-local"
+
+data_path: "data/hank_sample.json"
+output_dir: "outputs"
+
+train_size: 1
+val_size: 1
+timeout_sec: 240
+max_new_tokens: 32
+min_new_tokens: 0
+repetition_penalty: 1.35
+decode_preset: "deterministic"
+
+fixed_instruction: "精準濾除低頻漂移與所有共振峰，並深度抑制寬頻噪聲。請最大化語音諧波與背景的對比度，保留發聲細節。最終輸出響度必須與原始輸入嚴格匹配。"
+
