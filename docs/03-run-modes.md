@@ -14,19 +14,17 @@ evidence, and reflects on feedback.
 python scripts/run_gepa.py
 ```
 
-`skillopt` reads the OpenClaw `mimo-audio` skill, writes a candidate `SKILL.md`,
-validates the current skill and candidate with MiMo S2S plus Gemma4 audio
-scoring, then writes a decision report.
+`openclaw_task` creates an isolated OpenClaw agent, copies the workspace
+`mimo-audio` skill, runs health plus Hank `s2s-smoke`, exports the trajectory,
+and parses the generated audio path.
 
 ```bash
-python scripts/run_skillopt.py
+python scripts/run_openclaw_task.py
 ```
 
-SkillOpt-lite output includes `initial/SKILL.md`,
-`candidates/skill_v0001/SKILL.md`, `diff.md`, `training_report.json`,
-`baseline_report.json`, `candidate_report.json`, `decision.json`, and
-`summary.json`.
+OpenClaw task output includes `task.json`, `openclaw_result.json`,
+`parsed_result.json`, per-turn result snapshots, and a `trajectory/` bundle.
 
 For a shared server, keep `max_metric_calls` small in `configs/gepa_light.yaml`.
-SkillOpt-lite always writes candidates and reports instead of overwriting the
-live OpenClaw skill.
+The OpenClaw task runner uses a temporary agent and deletes it after trajectory
+export; it does not overwrite the live OpenClaw skill.

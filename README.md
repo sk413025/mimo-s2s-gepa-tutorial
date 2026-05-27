@@ -5,9 +5,11 @@ OpenClaw S2S skill text with DSPy.
 
 The point is not to train MiMo. MiMo S2S always remains the audio generation
 model. GEPA optimizes the text `instruction` that is sent to MiMo S2S.
-SkillOpt-lite treats the OpenClaw `mimo-audio` `SKILL.md` as a candidate skill
-artifact, writes a revised candidate, validates it, and records an accept/reject
-decision without overwriting the live OpenClaw skill.
+
+The SkillOpt direction is now grounded in real OpenClaw runs: the project first
+creates an isolated OpenClaw agent, runs the workspace `mimo-audio` S2S skill,
+exports the trajectory bundle, and parses the tool evidence. Candidate skill
+mutation is intentionally not wired in until this trajectory path is stable.
 
 ## Model Roles
 
@@ -21,8 +23,6 @@ Gemma4 has three separate roles:
   then returns score and feedback.
 - `reflection_lm`: used only by GEPA to revise the instruction-writing prompt
   from evaluator feedback.
-- `skill_proposer_lm`: used by SkillOpt-lite to rewrite a candidate OpenClaw
-  `SKILL.md` from run feedback.
 
 The audio evaluator is expressed as a normal DSPy signature field:
 
@@ -49,12 +49,13 @@ gepa:
     -> Gemma4 evaluator_lm listens to wav and gives feedback
     -> Gemma4 reflection_lm helps GEPA revise the instruction-writing prompt
 
-skillopt:
-  OpenClaw mimo-audio SKILL.md
-    -> validate the current skill snapshot on S2S samples
-    -> Gemma4 skill_proposer_lm writes a candidate SKILL.md
-    -> validate the candidate skill on the same validation set
-    -> write diff and accept/reject decision
+openclaw_task:
+  isolated OpenClaw agent + copied mimo-audio skill
+    -> read workspace SKILL.md
+    -> exec wrapper health check
+    -> exec s2s-smoke
+    -> export trajectory bundle
+    -> parse tool calls, tool results, and generated audio
 ```
 
 ## Quick Start
@@ -100,12 +101,11 @@ If `tailscale` is not in your shell path, inspect the interface directly:
 ip -4 addr show tailscale0
 ```
 
-Run the two modes:
+Run the available modes:
 
 ```bash
 python scripts/run_baseline.py
 python scripts/run_gepa.py
-python scripts/run_skillopt.py
 python scripts/run_openclaw_task.py
 ```
 
@@ -117,17 +117,16 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
   Gemma4 to evaluate the generated audio.
 - `gepa`: run a tiny GEPA optimization loop. Gemma4 writes instructions,
   evaluates generated audio, and reflects on feedback.
-- `skillopt`: run a small SkillOpt-like loop over the OpenClaw `mimo-audio`
-  `SKILL.md`. It writes candidate files and reports under `outputs/`, but does
-  not overwrite the live OpenClaw skill.
 - `openclaw_task`: run one isolated OpenClaw task with the `mimo-audio` skill
   and export its trajectory bundle. This is the first step toward true
   trajectory-based SkillOpt. Its default config requires a generated audio path,
   so an OpenClaw run that finishes without S2S audio is treated as a failed
   validation.
 
-Each run writes `summary.json` and `predictions.json`. Progress is reported
-through Python logging while the run is active.
+Baseline and GEPA runs write `summary.json` and `predictions.json`.
+`openclaw_task` writes `task.json`, OpenClaw result files, exported trajectory
+files, and `parsed_result.json`. Progress is reported through Python logging
+while the run is active.
 
 The generated wav files are written by the MiMo audio wrapper. The run summary
 records both `audio_path` and `audio_url`, for example:
@@ -145,23 +144,24 @@ data/           tiny Hank sample dataset
 scripts/        short entrypoints for each mode
 src/            role-based tutorial modules
 src/mimo_s2s_gepa/skillopt/
-                SkillOpt-lite artifact, patch, report, and loop helpers
+                OpenClaw runner and trajectory parsing helpers
 docs/           concept notes
 outputs/        run outputs, ignored by git
 ```
 
-SkillOpt-lite runs add:
+OpenClaw task runs add:
 
 ```text
-outputs/<timestamp>_skillopt/
-  initial/SKILL.md
-  candidates/skill_v0001/SKILL.md
-  candidates/skill_v0001/diff.md
-  training_report.json
-  baseline_report.json
-  candidate_report.json
-  decision.json
-  summary.json
+outputs/<timestamp>_openclaw_task/
+  task.json
+  openclaw_result.json
+  parsed_result.json
+  trajectory/
+    events.jsonl
+    artifacts.json
+    prompts.json
+    system-prompt.txt
+    tools.json
 ```
 
 ## References

@@ -53,4 +53,4 @@ outputs/<timestamp>_openclaw_task/
 - `configs/openclaw_task.yaml` sets `require_generated_audio: true`, so a run
   that reaches OpenClaw `success` but does not produce audio still fails.
 - The temporary OpenClaw agent is deleted at the end of the run.
-- Existing `baseline`, `gepa`, and `skillopt` modes remain unchanged.
+- Existing `baseline` and `gepa` modes remain unchanged.

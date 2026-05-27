@@ -1,3 +1,3 @@
-from .loop import run_skillopt
+from .openclaw_runner import run_openclaw_task
 
-__all__ = ["run_skillopt"]
+__all__ = ["run_openclaw_task"]
