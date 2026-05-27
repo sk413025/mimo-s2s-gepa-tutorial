@@ -1,6 +1,7 @@
 # Run Modes
 
-`smoke` uses a fixed instruction. It checks that MiMo S2S can run.
+`smoke` uses a fixed instruction. It checks that MiMo S2S can run and that
+Gemma4 can evaluate the generated audio.
 
 ```bash
 python scripts/run_smoke.py

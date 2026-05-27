@@ -24,5 +24,4 @@ The Gemma4 evaluator receives the generated wav through a DSPy multimodal field:
 generated_audio: dspy.Audio = dspy.InputField()
 ```
 
-It also reads metadata, transcript channel, duration diagnostics, and
-rule-based evidence.
+It also reads metadata, transcript channel, and duration diagnostics.
