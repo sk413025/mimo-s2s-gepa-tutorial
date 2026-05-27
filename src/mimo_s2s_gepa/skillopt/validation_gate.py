@@ -14,14 +14,15 @@ LOGGER = logging.getLogger(__name__)
 
 
 def find_latest_candidate_dir(output_dir: str | Path) -> Path:
-    candidates = sorted(Path(output_dir).glob("*_skill_candidate"))
+    output_path = Path(output_dir)
+    candidates = sorted(output_path.glob("*_skillopt_gepa/final_candidate"))
     if not candidates:
-        raise FileNotFoundError(f"No skill candidate runs found under {output_dir}")
+        raise FileNotFoundError(f"No SkillOpt GEPA final candidates found under {output_dir}")
     return candidates[-1]
 
 
 def resolve_candidate_dir(config: dict[str, Any]) -> Path:
-    configured = str(config.get("skill_candidate_dir") or "").strip()
+    configured = str(config.get("candidate_dir") or "").strip()
     if configured:
         return resolve_path(configured)
     return find_latest_candidate_dir(config["output_dir"])

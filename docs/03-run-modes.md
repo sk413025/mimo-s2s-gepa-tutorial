@@ -42,35 +42,6 @@ Leave `rollout_run_dir` empty in `configs/analyze_rollouts.yaml` to analyze the
 latest `outputs/*_openclaw_rollout` directory. The analysis stage writes
 `trajectory_feedback.json` and does not modify `SKILL.md`.
 
-`skill_candidate` reads the latest trajectory analysis and asks Gemma4 for small
-structured edits to the live `SKILL.md`.
-
-```bash
-python scripts/propose_skill_candidate.py
-```
-
-Leave `trajectory_analysis_dir` empty in `configs/propose_skill_candidate.yaml`
-to use the latest `outputs/*_trajectory_analysis` directory. The candidate stage
-writes `initial/SKILL.md`, `candidates/skill_v0001/edits.json`,
-`candidates/skill_v0001/SKILL.md`, `diff.md`, and `proposal.json`; it does not
-overwrite the live OpenClaw skill. It also appends a candidate row to
-`outputs/candidate_registry.jsonl`.
-
-`skill_validation` runs fresh baseline and candidate OpenClaw rollouts, then
-writes an accept/reject decision.
-
-```bash
-python scripts/validate_skill_candidate.py
-```
-
-Leave `skill_candidate_dir` empty in `configs/validate_skill_candidate.yaml` to
-use the latest `outputs/*_skill_candidate` directory. The validation stage
-rejects ties and only accepts a candidate when it scores higher than the live
-baseline. The default task file is
-`data/openclaw_skillopt_validation_tasks.jsonl`, which includes both guided and
-skill-driven OpenClaw tasks. It also appends a validation row to
-`outputs/candidate_registry.jsonl`.
-
 `skillopt_gepa` uses DSPy GEPA to optimize the prompt behind the SkillOpt
 candidate proposer.
 
@@ -84,6 +55,21 @@ candidate edit set and candidate skill for each GEPA metric call, validates it
 with fresh OpenClaw rollouts, and returns the validation decision as GEPA
 feedback. This mode does not overwrite the live OpenClaw skill. Metric
 candidates and the final candidate are recorded in
+`outputs/candidate_registry.jsonl`.
+
+`skill_validation` runs fresh baseline and final-candidate OpenClaw rollouts,
+then writes an accept/reject decision.
+
+```bash
+python scripts/validate_skill_candidate.py
+```
+
+Leave `candidate_dir` empty in `configs/validate_skill_candidate.yaml` to use
+the latest `outputs/*_skillopt_gepa/final_candidate` directory. The validation
+stage rejects ties and only accepts a candidate when it scores higher than the
+live baseline. The default task file is
+`data/openclaw_skillopt_validation_tasks.jsonl`, which includes both guided and
+skill-driven OpenClaw tasks. It also appends a validation row to
 `outputs/candidate_registry.jsonl`.
 
 `skill_promotion` turns a validation result into a reviewable promotion package.

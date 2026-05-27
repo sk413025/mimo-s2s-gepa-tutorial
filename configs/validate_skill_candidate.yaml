@@ -1,8 +1,8 @@
 # Validate a candidate OpenClaw SKILL.md with fresh baseline and candidate rollouts.
 output_dir: "outputs"
 
-# Leave empty to use the latest outputs/*_skill_candidate directory.
-skill_candidate_dir: ""
+# Leave empty to use the latest outputs/*_skillopt_gepa/final_candidate directory.
+candidate_dir: ""
 
 task_path: "data/openclaw_skillopt_validation_tasks.jsonl"
 openclaw_agent_model: "vllm/google/gemma-4-E4B-it"

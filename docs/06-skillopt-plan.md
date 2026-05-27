@@ -35,13 +35,14 @@ src/mimo_s2s_gepa/skillopt/
 - [x] Add a task dataset for repeated OpenClaw rollouts.
 - [x] Save one rollout subdirectory and summary per task.
 - [x] Add a trajectory analyzer that turns rollouts into structured feedback.
-- [x] Add a candidate `SKILL.md` proposer.
-- [x] Change candidate proposal to patch-level structured edits.
+- [x] Add a DSPy GEPA candidate `SKILL.md` proposer.
+- [x] Keep candidate proposal to patch-level structured edits.
 - [x] Validate candidate skills through fresh OpenClaw rollouts.
 - [x] Add accept/reject promotion reports without touching the live skill.
 - [x] Add a DSPy GEPA stage that optimizes the skill candidate proposer.
 - [x] Add stricter guided and skill-driven validation tasks.
 - [x] Add candidate registry/history across runs.
+- [x] Remove the standalone non-GEPA candidate proposal stage.
 
 ## Acceptance Commands
 
@@ -51,10 +52,9 @@ python scripts/run_baseline.py
 python scripts/run_gepa.py
 python scripts/run_openclaw_rollout.py
 python scripts/analyze_rollouts.py
-python scripts/propose_skill_candidate.py
+python scripts/run_skillopt_gepa.py
 python scripts/validate_skill_candidate.py
 python scripts/promote_candidate.py
-python scripts/run_skillopt_gepa.py
 ```
 
 ## Expected OpenClaw Rollout Output
@@ -102,31 +102,6 @@ outputs/<timestamp>_trajectory_analysis/
   skill issues, suggested changes, evidence, and next validation tasks.
 - The analyzer does not create or modify any candidate `SKILL.md`.
 
-## Expected Skill Candidate Output
-
-```text
-outputs/<timestamp>_skill_candidate/
-  initial/SKILL.md
-  candidates/skill_v0001/SKILL.md
-  candidates/skill_v0001/diff.md
-  candidates/skill_v0001/edits.json
-  proposal.json
-  summary.json
-outputs/candidate_registry.jsonl
-```
-
-## Candidate Criteria
-
-- The live OpenClaw skill is not overwritten.
-- The proposer returns 1-3 structured edits, not a full `SKILL.md` rewrite.
-- The candidate keeps YAML frontmatter and `name: mimo-audio`.
-- The candidate remains scoped to MiMo-Audio S2S / LDV restoration.
-- The candidate keeps `mimo_audio_s2s`, health, `s2s`, and `s2s-smoke` guidance.
-- The candidate does not introduce TTS or unrelated workflows.
-- Invalid edits are rejected before rollout.
-- Candidate creation appends a `candidate_created` registry row with candidate
-  hash, edits, diff metadata, and trajectory analysis source.
-
 ## Expected Skill Validation Output
 
 ```text
@@ -143,7 +118,7 @@ outputs/candidate_registry.jsonl
 ## Validation Criteria
 
 - Baseline and candidate both use fresh OpenClaw rollouts.
-- Candidate rollout uses `candidates/skill_v0001/SKILL.md`.
+- Candidate rollout uses `outputs/<timestamp>_skillopt_gepa/final_candidate/SKILL.md`.
 - The live OpenClaw skill is not overwritten.
 - `decision.json` records pass counts, validation scores, rollout directories,
   candidate path, and accepted/rejected reason.

@@ -66,27 +66,20 @@ trajectory_analysis:
     -> write structured SkillOpt feedback JSON
     -> do not mutate SKILL.md
 
-skill_candidate:
-  live OpenClaw SKILL.md + trajectory_feedback.json
-    -> Gemma4 proposes small structured edits
-    -> apply edits to produce a candidate SKILL.md
-    -> validate candidate scope and required S2S fields
-    -> write candidate file, edits, and diff
-    -> do not overwrite the live skill
-
-skill_validation:
-  live SKILL.md and candidate SKILL.md
-    -> run fresh baseline OpenClaw rollouts
-    -> run fresh candidate OpenClaw rollouts
-    -> compare validation scores
-    -> accept only on strict improvement
-
 skillopt_gepa:
   trajectory_feedback.json + live SKILL.md
     -> DSPy GEPA optimizes the skill candidate proposer prompt
     -> each metric call writes a candidate SKILL.md
     -> fresh OpenClaw candidate rollout scores the candidate
     -> validation feedback is returned to GEPA
+    -> write final_candidate/SKILL.md
+
+skill_validation:
+  live SKILL.md and SkillOpt GEPA final_candidate/SKILL.md
+    -> run fresh baseline OpenClaw rollouts
+    -> run fresh candidate OpenClaw rollouts
+    -> compare validation scores
+    -> accept only on strict improvement
 ```
 
 ## Quick Start
@@ -139,10 +132,9 @@ python scripts/run_baseline.py
 python scripts/run_gepa.py
 python scripts/run_openclaw_rollout.py
 python scripts/analyze_rollouts.py
-python scripts/propose_skill_candidate.py
+python scripts/run_skillopt_gepa.py
 python scripts/validate_skill_candidate.py
 python scripts/promote_candidate.py
-python scripts/run_skillopt_gepa.py
 ```
 
 Outputs are saved under `outputs/<timestamp>_<mode>/`.
@@ -161,16 +153,13 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
 - `trajectory_analysis`: ask Gemma4 to analyze a rollout run and produce
   structured SkillOpt feedback. This stage only writes analysis files; it does
   not write or edit candidate skills.
-- `skill_candidate`: ask Gemma4 to propose small structured edits from
-  trajectory feedback. The project applies those edits to produce a candidate
-  `SKILL.md`, writes candidate artifacts and a diff, but does not overwrite the
-  live OpenClaw skill.
-- `skill_validation`: run fresh baseline and candidate OpenClaw rollouts, then
-  accept the candidate only if it strictly improves the validation score. Ties are
-  rejected.
 - `skillopt_gepa`: use `dspy.GEPA` to optimize the candidate skill proposer.
   The metric reuses the OpenClaw validation path, so feedback comes from fresh
-  candidate rollouts instead of only offline text review.
+  candidate rollouts instead of only offline text review. This is the only
+  candidate proposal path in the project.
+- `skill_validation`: run fresh baseline and SkillOpt GEPA final-candidate
+  OpenClaw rollouts, then accept the candidate only if it strictly improves the
+  validation score. Ties are rejected.
 - `skill_promotion`: review the latest validation decision and write a
   promotion report, candidate copy, live-skill backup, and diff. It is dry-run by
   default and only overwrites the live OpenClaw skill when `apply: true`.
@@ -181,11 +170,9 @@ top-level `rollout_report.json`. Progress is reported through Python logging
 while the run is active.
 `trajectory_analysis` writes `trajectory_feedback.json` and
 `rollout_evidence.json`.
-`skill_candidate` writes an initial skill snapshot, structured edits, candidate
-skill, diff, and `proposal.json`.
-`skill_validation` writes baseline/candidate rollout reports plus `decision.json`.
 `skillopt_gepa` writes a fresh baseline report, per-metric-call candidates and
 decisions, aggregate `stats.json`, plus a final candidate proposal.
+`skill_validation` writes baseline/candidate rollout reports plus `decision.json`.
 `skill_promotion` writes a review package for the latest validation result. It
 does not modify the live skill unless explicitly configured to apply.
 
@@ -240,21 +227,6 @@ outputs/<timestamp>_trajectory_analysis/
   rollout_evidence.json
   summary.json
 ```
-
-Skill candidate runs add:
-
-```text
-outputs/<timestamp>_skill_candidate/
-  initial/SKILL.md
-  candidates/skill_v0001/SKILL.md
-  candidates/skill_v0001/diff.md
-  candidates/skill_v0001/edits.json
-  proposal.json
-  summary.json
-```
-
-They also append a `candidate_created` row to
-`outputs/candidate_registry.jsonl`.
 
 Skill validation runs add:
 

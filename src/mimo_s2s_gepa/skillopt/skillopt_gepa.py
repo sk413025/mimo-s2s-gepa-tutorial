@@ -10,8 +10,7 @@ from dspy.teleprompt.gepa.gepa_utils import ScoreWithFeedback
 
 from ..config import PROJECT_ROOT, load_config, resolve_path
 from ..runner import make_run_dir, save_json
-from .openclaw_skill import read_live_skill
-from .skill_candidate import (
+from .candidate_edits import (
     ProposeSkillEdits,
     build_proposer_lm,
     clean_candidate_skill,
@@ -20,6 +19,7 @@ from .skill_candidate import (
     proposal_constraints,
     validate_candidate_skill,
 )
+from .openclaw_skill import read_live_skill
 from .patching import apply_skill_edits, parse_edits_json, validate_edits
 from .registry import append_registry_record, build_candidate_record, build_validation_record
 from .trajectory_analyzer import load_json
