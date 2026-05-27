@@ -8,7 +8,7 @@ from typing import Any
 
 from ..config import PROJECT_ROOT, load_config, resolve_path
 from ..runner import make_run_dir, save_json
-from .registry import append_registry_record, build_promotion_record, file_sha256
+from .registry import file_sha256
 from .trajectory_analyzer import load_json
 
 LOGGER = logging.getLogger(__name__)
@@ -26,15 +26,6 @@ def resolve_validation_dir(config: dict[str, Any]) -> Path:
     if configured:
         return resolve_path(configured)
     return find_latest_validation_dir(config["output_dir"])
-
-
-def bool_config(config: dict[str, Any], key: str, default: bool = False) -> bool:
-    value = config.get(key, default)
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        return value.strip().lower() in {"1", "true", "yes", "y", "on"}
-    return bool(value)
 
 
 def write_skill_diff(live_skill_path: Path, candidate_skill_path: Path, diff_path: Path) -> str:
@@ -76,41 +67,20 @@ def build_promotion_report(
     live_skill_path: Path,
     diff_path: Path,
     candidate_copy_path: Path,
-    backup_live_skill_path: Path,
+    live_before_skill_path: Path,
 ) -> dict[str, Any]:
-    apply_requested = bool_config(config, "apply", False)
-    allow_rejected = bool_config(config, "allow_rejected", False)
     accepted = bool(decision.get("accepted", False))
-    promotion_allowed = accepted or allow_rejected
-    status = "dry_run"
-    blocked_reason = ""
-    applied = False
 
     live_hash_before = file_sha256(live_skill_path)
     candidate_hash = file_sha256(candidate_skill_path)
-
-    if apply_requested and not promotion_allowed:
-        status = "blocked_rejected_candidate"
-        blocked_reason = "candidate was rejected by validation; set allow_rejected: true to override"
-    elif apply_requested:
-        backup_live_skill_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(live_skill_path, backup_live_skill_path)
-        shutil.copy2(candidate_skill_path, live_skill_path)
-        applied = True
-        status = "promoted"
-
     live_hash_after = file_sha256(live_skill_path)
 
     return {
         "mode": "skill_promotion",
         "project_root": str(PROJECT_ROOT),
         "config": config,
-        "status": status,
-        "applied": applied,
-        "apply_requested": apply_requested,
-        "allow_rejected": allow_rejected,
-        "promotion_allowed": promotion_allowed,
-        "blocked_reason": blocked_reason,
+        "status": "review_only",
+        "applied": False,
         "validation_dir": str(validation_dir),
         "decision": decision,
         "accepted": accepted,
@@ -119,18 +89,16 @@ def build_promotion_report(
         "candidate_skill_path": str(candidate_skill_path),
         "candidate_copy_path": str(candidate_copy_path),
         "diff_path": str(diff_path),
-        "backup_live_skill_path": str(backup_live_skill_path),
+        "live_before_skill_path": str(live_before_skill_path),
         "live_hash_before": live_hash_before,
         "candidate_hash": candidate_hash,
         "live_hash_after": live_hash_after,
     }
 
 
-def run_skill_promotion(config_path: str, overrides: dict[str, Any] | None = None) -> Path:
+def run_skill_promotion(config_path: str) -> Path:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     config = load_config(config_path)
-    if overrides:
-        config.update(overrides)
     run_dir = make_run_dir(config, "skill_promotion")
     validation_dir, decision, candidate_skill_path = load_promotion_inputs(config)
 
@@ -145,8 +113,8 @@ def run_skill_promotion(config_path: str, overrides: dict[str, Any] | None = Non
 
     live_before_dir = run_dir / "live_before"
     live_before_dir.mkdir(parents=True, exist_ok=True)
-    backup_live_skill_path = live_before_dir / "SKILL.md"
-    shutil.copy2(live_skill_path, backup_live_skill_path)
+    live_before_skill_path = live_before_dir / "SKILL.md"
+    shutil.copy2(live_skill_path, live_before_skill_path)
 
     diff_path = run_dir / "diff.md"
     write_skill_diff(live_skill_path, candidate_skill_path, diff_path)
@@ -160,23 +128,8 @@ def run_skill_promotion(config_path: str, overrides: dict[str, Any] | None = Non
         live_skill_path=live_skill_path,
         diff_path=diff_path,
         candidate_copy_path=candidate_copy_path,
-        backup_live_skill_path=backup_live_skill_path,
+        live_before_skill_path=live_before_skill_path,
     )
-
-    registry_file = ""
-    if report["applied"]:
-        registry_file = str(
-            append_registry_record(
-                config,
-                build_promotion_record(
-                    source="skill_promotion",
-                    run_dir=run_dir,
-                    decision=decision,
-                    report=report,
-                ),
-            )
-        )
-    report["candidate_registry_path"] = registry_file
 
     save_json(run_dir / "promotion_report.json", report)
     save_json(run_dir / "summary.json", report)

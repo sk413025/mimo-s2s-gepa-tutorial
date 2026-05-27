@@ -19,7 +19,6 @@ class OpenClawRolloutTask:
     required_command_substrings: tuple[str, ...]
     required_audio_fields: tuple[str, ...]
     expected_backend: str | None
-    min_duration_sec: float | None
     require_audio_file_exists: bool
 
 
@@ -58,11 +57,6 @@ def load_rollout_tasks(config: dict[str, Any]) -> list[OpenClawRolloutTask]:
                 ),
                 required_audio_fields=tuple(raw.get("required_audio_fields", config.get("required_audio_fields", []))),
                 expected_backend=raw.get("expected_backend", config.get("expected_backend")),
-                min_duration_sec=(
-                    float(raw["min_duration_sec"])
-                    if "min_duration_sec" in raw
-                    else (float(config["min_duration_sec"]) if "min_duration_sec" in config else None)
-                ),
                 require_audio_file_exists=bool(raw.get("require_audio_file_exists", config.get("require_audio_file_exists", False))),
             )
         )

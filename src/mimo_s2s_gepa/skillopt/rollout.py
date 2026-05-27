@@ -34,7 +34,6 @@ def build_task_record(
         "required_command_substrings": list(task.required_command_substrings),
         "required_audio_fields": list(task.required_audio_fields),
         "expected_backend": task.expected_backend,
-        "min_duration_sec": task.min_duration_sec,
         "require_audio_file_exists": task.require_audio_file_exists,
         "timeout_sec": task.timeout_sec,
         "max_turns": task.max_turns,

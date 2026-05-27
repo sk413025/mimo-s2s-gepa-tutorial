@@ -84,8 +84,7 @@ validate_candidate:
 promote_candidate:
   validation decision + final_candidate/SKILL.md
     -> write review package and diff
-    -> dry-run by default
-    -> optionally apply accepted candidate to the live skill
+    -> never apply to the live skill
 ```
 
 ## Quick Start
@@ -149,7 +148,7 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
   evaluates generated audio, and reflects on feedback.
 - `skillopt`: run the OpenClaw SkillOpt teaching flow. By default this runs
   collection, trajectory analysis, DSPy GEPA optimization, validation, and a
-  promotion dry-run. It never applies the live skill by default.
+  review-only promotion package. It never applies the live skill.
 
 Run individual SkillOpt stages when debugging:
 
@@ -161,8 +160,8 @@ python scripts/run_skillopt.py validate
 python scripts/run_skillopt.py promote
 ```
 
-Use `python scripts/run_skillopt.py promote --apply` only after reviewing the
-dry-run report.
+`promote` writes a review package only. The tutorial project never overwrites
+the live OpenClaw skill.
 
 ## SkillOpt Stages
 
@@ -182,8 +181,8 @@ dry-run report.
   OpenClaw rollouts, then accept the candidate only if it strictly improves the
   validation score. Ties are rejected.
 - `promote_candidate`: review the latest validation decision and write a
-  promotion report, candidate copy, live-skill backup, and diff. It is dry-run by
-  default and only overwrites the live OpenClaw skill when `apply: true`.
+  promotion report, candidate copy, live-skill snapshot, and diff. It is
+  review-only and never overwrites the live OpenClaw skill.
 
 Baseline and GEPA runs write `summary.json` and `predictions.json`.
 `collect_rollouts` writes one subdirectory per task under `rollouts/`, plus a
@@ -195,7 +194,7 @@ while the run is active.
 decisions, aggregate `stats.json`, plus a final candidate proposal.
 `validate_candidate` writes baseline/candidate rollout reports plus `decision.json`.
 `promote_candidate` writes a review package for the latest validation result. It
-does not modify the live skill unless explicitly configured to apply.
+does not modify the live skill.
 
 The generated wav files are written by the MiMo audio wrapper. The run summary
 records both `audio_path` and `audio_url`, for example:
@@ -213,7 +212,6 @@ data/           tiny Hank sample dataset
 data/openclaw_skillopt_validation_tasks.jsonl
                 stricter SkillOpt validation tasks for OpenClaw rollouts
 scripts/        top-level tutorial entrypoints
-scripts/stages/ advanced single-stage entrypoints
 src/            role-based tutorial modules
 src/mimo_s2s_gepa/skillopt/
                 OpenClaw runner and trajectory parsing helpers
@@ -271,8 +269,8 @@ SkillOpt validation tasks can run in two modes:
 - `skill_driven`: the harness only tells OpenClaw to read the workspace skill
   and follow it, so candidate `SKILL.md` text can affect execution.
 
-Each task can require tool calls, command evidence, audio metadata fields,
-backend identity, minimum duration, and an existing generated wav file.
+Each task can require tool calls, command evidence, backend identity, required
+report fields, and an existing generated wav file.
 Tasks that complete cleanly in one turn score higher than tasks that only pass
 after a continuation turn.
 
@@ -299,8 +297,9 @@ The final optimized candidate appends a `candidate_created` row.
 
 Registry rows include candidate hashes, patch edits, diff metadata, validation
 scores, accept/reject reasons, generated audio paths, and continuation-task
-flags. Set `candidate_registry_path` in a config file to write this history to a
-different JSONL path.
+flags. This is an advanced traceability aid; the beginner flow can be understood
+from the per-run output directories alone. Set `candidate_registry_path` in a
+config file to write this history to a different JSONL path.
 
 Promotion runs add:
 
@@ -313,11 +312,9 @@ outputs/<timestamp>_skill_promotion/
   live_before/SKILL.md
 ```
 
-The default `configs/promote_candidate.yaml` is review-only. Rejected or tied
-candidates remain blocked even if `apply: true`, unless `allow_rejected: true`
-is set deliberately. Applied promotions append a `candidate_promoted` row to the
-registry. The script also accepts `--apply` and `--allow-rejected` for explicit
-manual promotion.
+The default `configs/promote_candidate.yaml` is review-only. It records whether
+validation accepted the candidate, but it never applies the candidate to the
+live OpenClaw skill.
 
 ## References
 

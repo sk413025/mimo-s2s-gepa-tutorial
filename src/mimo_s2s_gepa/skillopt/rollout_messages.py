@@ -20,8 +20,7 @@ the returned session until it completes. Do not stop after starting a background
 process. Do not use sessions_spawn. Do not call healthcheck, mimo-audio, or
 mimo_audio_s2s as tools. Do not read global/npm skill paths.
 
-Final answer must report: resolved_request, error, backend, audio_path, audio_url,
-duration_sec, text_channel, n_prompt_examples.
+Final answer must report: resolved_request, error, backend, audio_path, audio_url.
 
 User task:
 {message}
@@ -44,8 +43,7 @@ If an exec call returns "Command still running", call the process tool to
 poll/log the returned session until it completes. Do not stop after starting a
 background process.
 
-Final answer must report: resolved_request, error, backend, audio_path,
-audio_url, duration_sec, text_channel, n_prompt_examples.
+Final answer must report: resolved_request, error, backend, audio_path, audio_url.
 
 User task:
 {message}
@@ -62,6 +60,6 @@ python3 {paths.wrapper_path} s2s-smoke
 
 If exec returns "Command still running", call the process tool to poll/log the
 returned session until it completes. Final answer must include audio_path,
-audio_url, duration_sec, backend, text_channel, n_prompt_examples,
-resolved_request, and error. Do not use sessions_spawn or global/npm skill paths.
+audio_url, backend, resolved_request, and error. Do not use sessions_spawn or
+global/npm skill paths.
 """

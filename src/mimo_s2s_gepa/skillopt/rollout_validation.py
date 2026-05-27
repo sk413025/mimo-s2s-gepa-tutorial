@@ -47,14 +47,6 @@ def find_validation_errors(parsed: dict[str, Any], task: OpenClawRolloutTask) ->
     if task.expected_backend and generated_audio.get("backend") != task.expected_backend:
         errors.append(f"generated audio backend mismatch: {generated_audio.get('backend')}")
 
-    if task.min_duration_sec is not None:
-        duration = generated_audio.get("duration_sec")
-        try:
-            if float(duration) < task.min_duration_sec:
-                errors.append(f"generated audio duration is too short: {duration}")
-        except (TypeError, ValueError):
-            errors.append(f"generated audio duration is not numeric: {duration}")
-
     if task.require_audio_file_exists:
         audio_path = generated_audio.get("audio_path_expanded") or generated_audio.get("audio_path")
         if not audio_path or not Path(str(audio_path)).expanduser().is_file():

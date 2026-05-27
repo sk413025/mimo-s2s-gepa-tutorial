@@ -50,36 +50,19 @@ def extract_field(text: str, field: str) -> str | None:
     return None
 
 
-def parse_number(text: str | None) -> float | None:
-    if not text:
-        return None
-    match = re.search(r"-?\d+(?:\.\d+)?", text)
-    return float(match.group(0)) if match else None
-
-
 def extract_generated_audio_from_text(text: str) -> dict[str, Any] | None:
     audio_path = extract_field(text, "audio_path")
     if not audio_path or ".wav" not in audio_path:
         return None
 
-    duration_text = extract_field(text, "duration_sec")
-    examples_text = extract_field(text, "n_prompt_examples")
     generated: dict[str, Any] = {
         "audio_path": audio_path,
         "audio_path_expanded": expand_home_path(audio_path),
         "audio_url": extract_field(text, "audio_url"),
         "backend": extract_field(text, "backend"),
-        "duration_sec": None,
-        "text_channel": extract_field(text, "text_channel"),
-        "n_prompt_examples": None,
         "error": extract_field(text, "error"),
         "source": "text",
     }
-    if duration_text:
-        generated["duration_sec"] = parse_number(duration_text) or duration_text
-    if examples_text:
-        examples_count = parse_number(examples_text)
-        generated["n_prompt_examples"] = int(examples_count) if examples_count is not None else examples_text
     return {key: value for key, value in generated.items() if value is not None}
 
 
@@ -88,7 +71,6 @@ def enrich_generated_audio_from_texts(generated_audio: dict[str, Any], texts: li
     field_parsers = {
         "audio_url": str,
         "backend": str,
-        "text_channel": str,
         "error": str,
     }
     for field, parser in field_parsers.items():
@@ -97,20 +79,6 @@ def enrich_generated_audio_from_texts(generated_audio: dict[str, Any], texts: li
         value = next((extract_field(text, field) for text in texts if extract_field(text, field) is not None), None)
         if value is not None:
             enriched[field] = parser(value)
-
-    if not enriched.get("duration_sec"):
-        value = next((extract_field(text, "duration_sec") for text in texts if extract_field(text, "duration_sec") is not None), None)
-        if value is not None:
-            enriched["duration_sec"] = parse_number(value) or value
-
-    if not enriched.get("n_prompt_examples"):
-        value = next(
-            (extract_field(text, "n_prompt_examples") for text in texts if extract_field(text, "n_prompt_examples") is not None),
-            None,
-        )
-        if value is not None:
-            count = parse_number(value)
-            enriched["n_prompt_examples"] = int(count) if count is not None else value
 
     return enriched
 

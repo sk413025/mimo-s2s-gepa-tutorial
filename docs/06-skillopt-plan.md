@@ -27,7 +27,6 @@ src/mimo_s2s_gepa/skillopt/
 - [x] Remove the old offline candidate rewrite path.
 - [x] Add `configs/collect_rollouts.yaml`.
 - [x] Add `scripts/run_skillopt.py` as the beginner-facing SkillOpt entrypoint.
-- [x] Move single-stage SkillOpt scripts under `scripts/stages/`.
 - [x] Create a temporary isolated OpenClaw agent and workspace.
 - [x] Copy the live `mimo-audio` skill into that workspace.
 - [x] Run health plus Hank `s2s-smoke` through OpenClaw.
@@ -44,13 +43,15 @@ src/mimo_s2s_gepa/skillopt/
 - [x] Add stricter guided and skill-driven validation tasks.
 - [x] Add candidate registry/history across runs.
 - [x] Remove the standalone non-GEPA candidate proposal stage.
+- [x] Remove duplicate single-stage scripts; `scripts/run_skillopt.py` is the
+  only beginner-facing SkillOpt entrypoint.
 - [x] Split OpenClaw rollout collection into CLI, task, message, validation,
   and orchestration modules.
 
 ## Acceptance Commands
 
 ```bash
-python -m py_compile scripts/*.py scripts/stages/*.py src/mimo_s2s_gepa/*.py src/mimo_s2s_gepa/skillopt/*.py
+python -m py_compile scripts/*.py src/mimo_s2s_gepa/*.py src/mimo_s2s_gepa/skillopt/*.py
 python scripts/run_baseline.py
 python scripts/run_gepa.py
 python scripts/run_skillopt.py
@@ -129,7 +130,7 @@ outputs/candidate_registry.jsonl
 - Candidate is accepted only when it scores higher than baseline; ties are
   rejected.
 - Validation tasks check required tool names, command evidence, generated audio
-  fields, backend, duration, and generated wav file existence.
+  path or URL, backend, and generated wav file existence.
 - Skill-driven tasks require OpenClaw to derive wrapper commands from the
   workspace `SKILL.md` instead of receiving the exact smoke command from the
   harness.
@@ -156,7 +157,6 @@ outputs/<timestamp>_skillopt_gepa/
   final_candidate/proposal.json
   stats.json
   summary.json
-outputs/candidate_registry.jsonl
 ```
 
 ## SkillOpt GEPA Criteria
@@ -180,17 +180,12 @@ outputs/<timestamp>_skill_promotion/
   diff.md
   candidate/SKILL.md
   live_before/SKILL.md
-outputs/candidate_registry.jsonl
 ```
 
 ## Promotion Criteria
 
-- Promotion is dry-run by default and does not overwrite the live OpenClaw
-  skill.
+- Promotion is review-only and does not overwrite the live OpenClaw skill.
 - The report records the validation directory, decision, live skill path,
-  candidate path, before/after hashes, diff path, and backup path.
-- Rejected or tied candidates are blocked when `apply: true` unless
-  `allow_rejected: true` is set deliberately.
-- Applied promotions copy the previous live skill into `live_before/SKILL.md`,
-  overwrite the live skill with the candidate, and append a `candidate_promoted`
-  registry row.
+  candidate path, before/after hashes, diff path, and live-snapshot path.
+- The tutorial does not include an apply path. A human should review the diff
+  and copy the candidate into OpenClaw outside this beginner flow if needed.

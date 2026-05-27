@@ -11,11 +11,11 @@ python scripts/run_skillopt.py
 `run_skillopt.py` defaults to the full teaching flow:
 
 ```text
-collect -> analyze -> optimize -> validate -> promote dry-run
+collect -> analyze -> optimize -> validate -> promote review-only
 ```
 
-The single-stage scripts below are for debugging or repeating one stage without
-rerunning the whole flow.
+The same entrypoint also supports one stage at a time for debugging or repeating
+part of the flow.
 
 `baseline` asks Gemma4 to write one instruction, sends it to MiMo, then asks
 Gemma4 to evaluate the run evidence.
@@ -37,7 +37,6 @@ exports each trajectory, and parses generated audio paths.
 
 ```bash
 python scripts/run_skillopt.py collect
-# or: python scripts/stages/collect_rollouts.py
 ```
 
 OpenClaw rollout output includes a top-level `rollout_report.json` and one
@@ -54,7 +53,6 @@ SkillOpt feedback.
 
 ```bash
 python scripts/run_skillopt.py analyze
-# or: python scripts/stages/analyze_trajectories.py
 ```
 
 Leave `rollout_run_dir` empty in `configs/analyze_trajectories.yaml` to analyze the
@@ -66,7 +64,6 @@ candidate proposer.
 
 ```bash
 python scripts/run_skillopt.py optimize
-# or: python scripts/stages/optimize_skill.py
 ```
 
 Leave `trajectory_analysis_dir` empty in `configs/optimize_skill.yaml` to
@@ -82,7 +79,6 @@ then writes an accept/reject decision.
 
 ```bash
 python scripts/run_skillopt.py validate
-# or: python scripts/stages/validate_candidate.py
 ```
 
 Leave `candidate_dir` empty in `configs/validate_candidate.yaml` to use
@@ -97,13 +93,10 @@ skill-driven OpenClaw tasks. It also appends a validation row to
 
 ```bash
 python scripts/run_skillopt.py promote
-# or: python scripts/stages/promote_candidate.py
 ```
 
 Leave `skill_validation_dir` empty in `configs/promote_candidate.yaml` to use
 the latest `outputs/*_skill_validation` directory. The default config is
-dry-run: it writes `promotion_report.json`, `diff.md`, `candidate/SKILL.md`,
-and `live_before/SKILL.md`, but it does not overwrite the live OpenClaw skill.
-Set `apply: true` only after reviewing the report. Rejected or tied candidates
-are blocked unless `allow_rejected: true` is set intentionally. For manual use,
-the script also accepts `--apply` and `--allow-rejected`.
+review-only: it writes `promotion_report.json`, `diff.md`,
+`candidate/SKILL.md`, and `live_before/SKILL.md`, but it does not overwrite the
+live OpenClaw skill.

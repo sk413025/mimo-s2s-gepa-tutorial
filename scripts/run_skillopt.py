@@ -37,7 +37,7 @@ def main() -> None:
         description=(
             "Run the SkillOpt teaching flow. Default is `all`, which collects "
             "OpenClaw trajectories, analyzes them, runs DSPy GEPA, validates the "
-            "candidate, and writes a promotion dry-run package."
+            "candidate, and writes a review-only promotion package."
         )
     )
     parser.add_argument(
@@ -47,36 +47,18 @@ def main() -> None:
         choices=["all", "collect", "analyze", "optimize", "validate", "promote"],
         help="SkillOpt stage to run. Defaults to all.",
     )
-    parser.add_argument(
-        "--apply",
-        action="store_true",
-        help="Only valid with `promote`; overwrite the live OpenClaw skill with the candidate.",
-    )
-    parser.add_argument(
-        "--allow-rejected",
-        action="store_true",
-        help="Only valid with `promote`; allow applying a rejected candidate.",
-    )
     args = parser.parse_args()
-
-    if args.stage != "promote" and (args.apply or args.allow_rejected):
-        parser.error("--apply and --allow-rejected are only valid with `promote`")
 
     if args.stage == "all":
         for stage in ["collect", "analyze", "optimize", "validate"]:
             run_stage(stage)
-        print("stage=promote config=configs/promote_candidate.yaml apply=false", flush=True)
+        print("stage=promote config=configs/promote_candidate.yaml review_only=true", flush=True)
         run_skill_promotion("configs/promote_candidate.yaml")
         return
 
     if args.stage == "promote":
-        overrides = {}
-        if args.apply:
-            overrides["apply"] = True
-        if args.allow_rejected:
-            overrides["allow_rejected"] = True
-        print(f"stage=promote config=configs/promote_candidate.yaml apply={bool(overrides.get('apply'))}", flush=True)
-        run_skill_promotion("configs/promote_candidate.yaml", overrides=overrides)
+        print("stage=promote config=configs/promote_candidate.yaml review_only=true", flush=True)
+        run_skill_promotion("configs/promote_candidate.yaml")
         return
 
     run_stage(args.stage)
