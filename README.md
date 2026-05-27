@@ -2,20 +2,53 @@
 
 This is a small teaching project for optimizing MiMo-Audio S2S instructions with DSPy GEPA.
 
-The point is not to train MiMo. GEPA rewrites the text `instruction` that is sent to MiMo S2S.
+The point is not to train MiMo. MiMo S2S always remains the audio generation
+model. GEPA optimizes the text `instruction` that is sent to MiMo S2S, using
+Gemma4 for the text-side work around that audio model.
 
-```text
-Hank sample data
-  -> Gemma4 vLLM writes an instruction
-  -> MiMo S2S wrapper restores the audio
-  -> evaluator returns score + feedback
-  -> GEPA can try a better instruction
+## Model Roles
+
+MiMo S2S receives an instruction plus an input audio path, then generates the
+restored wav file.
+
+Gemma4 has three separate roles:
+
+- `task_lm`: writes the MiMo S2S instruction from the sample context.
+- `evaluator_lm`: listens to the generated wav with a DSPy multimodal field,
+  then returns score and feedback.
+- `reflection_lm`: used only by GEPA to revise the instruction-writing prompt
+  from evaluator feedback.
+
+The audio evaluator is expressed as a normal DSPy signature field:
+
+```python
+generated_audio: dspy.Audio = dspy.InputField()
 ```
 
-In `baseline` and `gepa`, Gemma4 is also used as the evaluator. The evaluator
-uses a DSPy multimodal field, `generated_audio: dspy.Audio = dspy.InputField()`,
-so Gemma4 can listen to the generated wav. It combines that with the run
-metadata, transcript channel, and rule-based evidence.
+So the evaluator path is still DSPy-first; this project does not call LiteLLM
+directly.
+
+## Flow
+
+```text
+smoke:
+  Hank sample data
+    -> fixed instruction
+    -> MiMo S2S wrapper generates wav
+
+baseline:
+  Hank sample data
+    -> Gemma4 task_lm writes instruction
+    -> MiMo S2S wrapper generates wav
+    -> Gemma4 evaluator_lm listens to wav and scores it
+
+gepa:
+  Hank sample data
+    -> Gemma4 task_lm writes instruction
+    -> MiMo S2S wrapper generates wav
+    -> Gemma4 evaluator_lm listens to wav and gives feedback
+    -> Gemma4 reflection_lm helps GEPA revise the instruction-writing prompt
+```
 
 ## Quick Start
 
@@ -73,8 +106,10 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
 ## Modes
 
 - `smoke`: use a fixed Hank instruction and only test the MiMo S2S path.
-- `baseline`: ask Gemma4 to write one instruction, then run MiMo S2S once.
-- `gepa`: run a tiny GEPA optimization loop.
+- `baseline`: ask Gemma4 to write one instruction, run MiMo S2S once, then ask
+  Gemma4 to evaluate the generated audio.
+- `gepa`: run a tiny GEPA optimization loop. Gemma4 writes instructions,
+  evaluates generated audio, and reflects on feedback.
 
 Each run writes `summary.json`, including logical counters:
 
@@ -83,8 +118,16 @@ Each run writes `summary.json`, including logical counters:
   "task_lm_calls": 1,
   "reflection_lm_calls": 0,
   "evaluator_lm_calls": 1,
-  "mimo_s2s_calls": 5
+  "mimo_s2s_calls": 1
 }
+```
+
+The generated wav files are written by the MiMo audio wrapper. The run summary
+records both `audio_path` and `audio_url`, for example:
+
+```text
+/home/sbplab/jiawei/triton_mimo_audio/outputs/tool/<id>.wav
+http://100.70.78.122:19080/audio/<id>.wav
 ```
 
 ## Files
