@@ -106,6 +106,7 @@ Run the two modes:
 python scripts/run_baseline.py
 python scripts/run_gepa.py
 python scripts/run_skillopt.py
+python scripts/run_openclaw_task.py
 ```
 
 Outputs are saved under `outputs/<timestamp>_<mode>/`.
@@ -119,6 +120,11 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
 - `skillopt`: run a small SkillOpt-like loop over the OpenClaw `mimo-audio`
   `SKILL.md`. It writes candidate files and reports under `outputs/`, but does
   not overwrite the live OpenClaw skill.
+- `openclaw_task`: run one isolated OpenClaw task with the `mimo-audio` skill
+  and export its trajectory bundle. This is the first step toward true
+  trajectory-based SkillOpt. Its default config requires a generated audio path,
+  so an OpenClaw run that finishes without S2S audio is treated as a failed
+  validation.
 
 Each run writes `summary.json` and `predictions.json`. Progress is reported
 through Python logging while the run is active.
