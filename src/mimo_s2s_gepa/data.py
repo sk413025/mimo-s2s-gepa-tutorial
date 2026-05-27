@@ -27,10 +27,7 @@ def load_examples(path: str | Path) -> list[dspy.Example]:
                 ),
                 audio_path=record["input_audio"],
                 prompt_examples_json=record["prompt_examples_json"],
-                reference_audio_path=record["reference_audio"],
                 expected_transcript=transcript,
-                speaker=speaker,
-                material=material,
             ).with_inputs(
                 "restoration_goal",
                 "input_note",
@@ -49,4 +46,3 @@ def split_examples(
     train = examples[: max(1, train_size)]
     val = examples[: max(1, val_size)]
     return train, val
-

@@ -29,7 +29,7 @@ def build_evaluator_lm(config: dict[str, Any]) -> dspy.LM:
     )
 
 
-def gemma_metric(config: dict[str, Any]) -> Callable[..., ScoreWithFeedback]:
+def build_gemma_metric(config: dict[str, Any]) -> Callable[..., ScoreWithFeedback]:
     evaluator_lm = build_evaluator_lm(config)
     audio_evaluator = dspy.Predict(EvaluateGeneratedAudio)
 
@@ -48,7 +48,6 @@ def gemma_metric(config: dict[str, Any]) -> Callable[..., ScoreWithFeedback]:
 
         run_evidence = (
             f"Expected transcript: {gold.expected_transcript}\n"
-            f"Reference audio path: {gold.reference_audio_path}\n"
             f"Output audio path: {pred.audio_path}\n"
             f"Output audio URL: {pred.audio_url}\n"
             f"Output duration seconds: {pred.duration_sec}\n"
@@ -75,7 +74,3 @@ def gemma_metric(config: dict[str, Any]) -> Callable[..., ScoreWithFeedback]:
         return ScoreWithFeedback(score=score, feedback=f"Gemma evaluator score={score:.3f}\n{feedback}")
 
     return evaluate
-
-
-def build_metric(config: dict[str, Any]) -> Callable[..., ScoreWithFeedback]:
-    return gemma_metric(config)

@@ -10,7 +10,7 @@ import dspy
 
 from .config import PROJECT_ROOT, load_config
 from .data import load_examples, split_examples
-from .metrics import build_metric
+from .metrics import build_gemma_metric
 from .program import MiMoS2SProgram
 
 LOGGER = logging.getLogger(__name__)
@@ -92,7 +92,7 @@ def run(config_path: str, mode: str) -> Path:
     configure_task_lm(config)
 
     program = MiMoS2SProgram(config)
-    metric_fn = build_metric(config)
+    metric_fn = build_gemma_metric(config)
 
     if mode == "gepa":
         LOGGER.info("compiling GEPA program")
