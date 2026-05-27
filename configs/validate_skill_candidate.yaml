@@ -1,0 +1,15 @@
+# Validate a candidate OpenClaw SKILL.md with fresh baseline and candidate rollouts.
+output_dir: "outputs"
+
+# Leave empty to use the latest outputs/*_skill_candidate directory.
+skill_candidate_dir: ""
+
+task_path: "data/openclaw_rollout_tasks.jsonl"
+openclaw_agent_model: "vllm/google/gemma-4-E4B-it"
+openclaw_live_skill_path: "/home/sbplab/.openclaw/workspace/skills/mimo-audio/SKILL.md"
+openclaw_timeout_sec: 600
+openclaw_max_turns: 3
+require_generated_audio: true
+
+# Keep validation lightweight by default. Raise this to validate more task rows.
+max_tasks: 1

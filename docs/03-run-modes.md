@@ -53,3 +53,15 @@ Leave `trajectory_analysis_dir` empty in `configs/propose_skill_candidate.yaml`
 to use the latest `outputs/*_trajectory_analysis` directory. The candidate stage
 writes `initial/SKILL.md`, `candidates/skill_v0001/SKILL.md`, `diff.md`, and
 `proposal.json`; it does not overwrite the live OpenClaw skill.
+
+`skill_validation` runs fresh baseline and candidate OpenClaw rollouts, then
+writes an accept/reject decision.
+
+```bash
+python scripts/validate_skill_candidate.py
+```
+
+Leave `skill_candidate_dir` empty in `configs/validate_skill_candidate.yaml` to
+use the latest `outputs/*_skill_candidate` directory. The validation stage
+rejects ties and only accepts a candidate when it passes more rollout tasks than
+the live baseline.

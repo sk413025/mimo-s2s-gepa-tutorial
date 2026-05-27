@@ -36,8 +36,8 @@ src/mimo_s2s_gepa/skillopt/
 - [x] Save one rollout subdirectory and summary per task.
 - [x] Add a trajectory analyzer that turns rollouts into structured feedback.
 - [x] Add a candidate `SKILL.md` proposer.
-- [ ] Validate candidate skills through fresh OpenClaw rollouts.
-- [ ] Add accept/reject promotion reports without touching the live skill.
+- [x] Validate candidate skills through fresh OpenClaw rollouts.
+- [x] Add accept/reject promotion reports without touching the live skill.
 
 ## Acceptance Commands
 
@@ -48,6 +48,7 @@ python scripts/run_gepa.py
 python scripts/run_openclaw_rollout.py
 python scripts/analyze_rollouts.py
 python scripts/propose_skill_candidate.py
+python scripts/validate_skill_candidate.py
 ```
 
 ## Expected OpenClaw Rollout Output
@@ -113,3 +114,25 @@ outputs/<timestamp>_skill_candidate/
 - The candidate remains scoped to MiMo-Audio S2S / LDV restoration.
 - The candidate keeps `mimo_audio_s2s`, health, `s2s`, and `s2s-smoke` guidance.
 - The candidate does not introduce TTS or unrelated workflows.
+
+## Expected Skill Validation Output
+
+```text
+outputs/<timestamp>_skill_validation/
+  baseline_report.json
+  candidate_report.json
+  decision.json
+  summary.json
+  baseline_rollout/
+  candidate_rollout/
+```
+
+## Validation Criteria
+
+- Baseline and candidate both use fresh OpenClaw rollouts.
+- Candidate rollout uses `candidates/skill_v0001/SKILL.md`.
+- The live OpenClaw skill is not overwritten.
+- `decision.json` records pass counts, rollout directories, candidate path, and
+  accepted/rejected reason.
+- Candidate is accepted only when it passes more tasks than baseline; ties are
+  rejected.

@@ -69,6 +69,13 @@ skill_candidate:
     -> validate candidate scope and required S2S fields
     -> write candidate file and diff
     -> do not overwrite the live skill
+
+skill_validation:
+  live SKILL.md and candidate SKILL.md
+    -> run fresh baseline OpenClaw rollouts
+    -> run fresh candidate OpenClaw rollouts
+    -> compare pass counts
+    -> accept only on strict improvement
 ```
 
 ## Quick Start
@@ -122,6 +129,7 @@ python scripts/run_gepa.py
 python scripts/run_openclaw_rollout.py
 python scripts/analyze_rollouts.py
 python scripts/propose_skill_candidate.py
+python scripts/validate_skill_candidate.py
 ```
 
 Outputs are saved under `outputs/<timestamp>_<mode>/`.
@@ -143,6 +151,9 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
 - `skill_candidate`: ask Gemma4 to propose a complete candidate `SKILL.md` from
   trajectory feedback. This stage writes candidate artifacts and a diff, but it
   does not overwrite the live OpenClaw skill.
+- `skill_validation`: run fresh baseline and candidate OpenClaw rollouts, then
+  accept the candidate only if it strictly improves the pass count. Ties are
+  rejected.
 
 Baseline and GEPA runs write `summary.json` and `predictions.json`.
 `openclaw_rollout` writes one subdirectory per task under `rollouts/`, plus a
@@ -152,6 +163,7 @@ while the run is active.
 `rollout_evidence.json`.
 `skill_candidate` writes an initial skill snapshot, candidate skill, diff, and
 `proposal.json`.
+`skill_validation` writes baseline/candidate rollout reports plus `decision.json`.
 
 The generated wav files are written by the MiMo audio wrapper. The run summary
 records both `audio_path` and `audio_url`, for example:
@@ -210,6 +222,18 @@ outputs/<timestamp>_skill_candidate/
   candidates/skill_v0001/diff.md
   proposal.json
   summary.json
+```
+
+Skill validation runs add:
+
+```text
+outputs/<timestamp>_skill_validation/
+  baseline_report.json
+  candidate_report.json
+  decision.json
+  summary.json
+  baseline_rollout/
+  candidate_rollout/
 ```
 
 ## References

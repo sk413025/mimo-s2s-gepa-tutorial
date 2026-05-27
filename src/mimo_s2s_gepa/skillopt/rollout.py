@@ -71,21 +71,25 @@ def parse_last_json_object(text: str) -> dict[str, Any] | None:
     return best
 
 
-def copy_skill_tree(live_skill_path: str | Path, workspace_dir: Path) -> Path:
+def copy_skill_tree(skill_path: str | Path, live_skill_path: str | Path, workspace_dir: Path) -> Path:
+    source_skill = Path(skill_path)
     live_skill = Path(live_skill_path)
+    source_skill_dir = source_skill.parent
     live_skill_dir = live_skill.parent
+    source_tree_dir = source_skill_dir if (source_skill_dir / "scripts").is_dir() else live_skill_dir
     target_dir = workspace_dir / "skills" / live_skill_dir.name
     if target_dir.exists():
         shutil.rmtree(target_dir)
     target_dir.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(live_skill_dir, target_dir)
+    shutil.copytree(source_tree_dir, target_dir)
 
-    skill_path = target_dir / "SKILL.md"
-    text = read_live_skill(skill_path)
+    target_skill_path = target_dir / "SKILL.md"
+    text = read_live_skill(source_skill)
+    text = text.replace(str(source_skill_dir), str(target_dir))
     text = text.replace(str(live_skill_dir), str(target_dir))
     text = text.replace(str(live_skill_dir.parent.parent), str(workspace_dir))
-    skill_path.write_text(text, encoding="utf-8")
-    return skill_path
+    target_skill_path.write_text(text, encoding="utf-8")
+    return target_skill_path
 
 
 def write_workspace_guidance(paths: OpenClawRolloutPaths) -> None:
@@ -142,7 +146,8 @@ def setup_agent(config: dict[str, Any], run_dir: Path, task_id: str) -> tuple[st
     if add_result.returncode != 0 or add_json is None:
         raise RuntimeError(f"failed to add OpenClaw agent: {add_result.stderr or add_result.stdout}")
 
-    skill_path = copy_skill_tree(config["openclaw_live_skill_path"], workspace_dir)
+    source_skill_path = config.get("openclaw_skill_path") or config["openclaw_live_skill_path"]
+    skill_path = copy_skill_tree(source_skill_path, config["openclaw_live_skill_path"], workspace_dir)
     paths = OpenClawRolloutPaths(
         run_dir=run_dir,
         workspace_dir=workspace_dir,
@@ -344,6 +349,7 @@ def run_one_rollout(config: dict[str, Any], run_dir: Path, task: OpenClawRollout
             "agent_id": agent_id,
             "workspace_dir": str(paths.workspace_dir),
             "skill_path": str(paths.skill_path),
+            "source_skill_path": str(config.get("openclaw_skill_path") or config["openclaw_live_skill_path"]),
             "wrapper_path": str(paths.wrapper_path),
             "live_skill_path": str(config["openclaw_live_skill_path"]),
         }
@@ -415,5 +421,4 @@ def run_openclaw_rollouts(config_path: str) -> Path:
     save_json(run_dir / "rollout_report.json", report)
     save_json(run_dir / "summary.json", report)
     print(f"saved_run_dir={run_dir}")
-    return run_dir
     return run_dir
