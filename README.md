@@ -31,12 +31,6 @@ directly.
 ## Flow
 
 ```text
-smoke:
-  Hank sample data
-    -> fixed instruction
-    -> MiMo S2S wrapper generates wav
-    -> Gemma4 evaluator_lm listens to wav and scores it
-
 baseline:
   Hank sample data
     -> Gemma4 task_lm writes instruction
@@ -94,10 +88,9 @@ If `tailscale` is not in your shell path, inspect the interface directly:
 ip -4 addr show tailscale0
 ```
 
-Run the three modes:
+Run the two modes:
 
 ```bash
-python scripts/run_smoke.py
 python scripts/run_baseline.py
 python scripts/run_gepa.py
 ```
@@ -106,8 +99,6 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
 
 ## Modes
 
-- `smoke`: use a fixed Hank instruction, run MiMo S2S once, then ask Gemma4 to
-  evaluate the generated audio.
 - `baseline`: ask Gemma4 to write one instruction, run MiMo S2S once, then ask
   Gemma4 to evaluate the generated audio.
 - `gepa`: run a tiny GEPA optimization loop. Gemma4 writes instructions,

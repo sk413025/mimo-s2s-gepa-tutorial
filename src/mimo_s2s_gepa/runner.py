@@ -83,11 +83,9 @@ def run(config_path: str, mode: str) -> Path:
     reset_counters()
     run_dir = make_run_dir(config, mode)
 
-    if mode != "smoke":
-        configure_task_lm(config)
+    configure_task_lm(config)
 
-    fixed_instruction = config.get("fixed_instruction", "") if mode == "smoke" else ""
-    program = MiMoS2SProgram(config, fixed_instruction=fixed_instruction)
+    program = MiMoS2SProgram(config)
     metric_fn = build_metric(config)
 
     if mode == "gepa":

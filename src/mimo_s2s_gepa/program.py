@@ -20,10 +20,9 @@ class WriteInstruction(dspy.Signature):
 class MiMoS2SProgram(dspy.Module):
     """DSPy program: write an instruction, then evaluate it through MiMo S2S."""
 
-    def __init__(self, config: dict[str, Any], fixed_instruction: str = ""):
+    def __init__(self, config: dict[str, Any]):
         super().__init__()
         self.config = config
-        self.fixed_instruction = fixed_instruction.strip()
         self.instruction_writer = dspy.Predict(WriteInstruction)
 
     def forward(
@@ -33,11 +32,8 @@ class MiMoS2SProgram(dspy.Module):
         audio_path: str,
         prompt_examples_json: str,
     ) -> dspy.Prediction:
-        if self.fixed_instruction:
-            instruction = self.fixed_instruction
-        else:
-            written = self.instruction_writer(restoration_goal=restoration_goal, input_note=input_note)
-            instruction = " ".join(str(written.instruction).split())
+        written = self.instruction_writer(restoration_goal=restoration_goal, input_note=input_note)
+        instruction = " ".join(str(written.instruction).split())
 
         result = call_mimo_s2s(
             model=self.config["mimo_model"],
