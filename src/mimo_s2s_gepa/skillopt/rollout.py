@@ -13,13 +13,13 @@ from typing import Any
 from ..config import PROJECT_ROOT, load_config
 from ..runner import make_run_dir, save_json
 from .openclaw_skill import read_live_skill
-from .trajectory import parse_trajectory_bundle
+from .trajectory_parser import parse_trajectory_bundle
 
 LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
-class OpenClawTaskPaths:
+class OpenClawRolloutPaths:
     run_dir: Path
     workspace_dir: Path
     agent_dir: Path
@@ -28,6 +28,15 @@ class OpenClawTaskPaths:
     @property
     def wrapper_path(self) -> Path:
         return self.skill_path.parent / "scripts" / "mimo_audio_wrapper.py"
+
+
+@dataclass(frozen=True)
+class OpenClawRolloutTask:
+    task_id: str
+    message: str
+    require_generated_audio: bool
+    timeout_sec: int
+    max_turns: int
 
 
 def slugify(value: str) -> str:
@@ -79,8 +88,8 @@ def copy_skill_tree(live_skill_path: str | Path, workspace_dir: Path) -> Path:
     return skill_path
 
 
-def write_workspace_guidance(paths: OpenClawTaskPaths) -> None:
-    guidance = f"""# SkillOpt OpenClaw Task Workspace
+def write_workspace_guidance(paths: OpenClawRolloutPaths) -> None:
+    guidance = f"""# SkillOpt OpenClaw Rollout Workspace
 
 This temporary workspace is used to validate the workspace `mimo-audio` skill.
 
@@ -105,9 +114,9 @@ python3 {paths.wrapper_path} s2s-smoke
     (paths.workspace_dir / "TOOLS.md").write_text(guidance, encoding="utf-8")
 
 
-def setup_agent(config: dict[str, Any], run_dir: Path) -> tuple[str, OpenClawTaskPaths, dict[str, Any]]:
+def setup_agent(config: dict[str, Any], run_dir: Path, task_id: str) -> tuple[str, OpenClawRolloutPaths, dict[str, Any]]:
     stamp = time.strftime("%Y%m%d%H%M%S")
-    agent_id = f"skillopt-task-{stamp}"
+    agent_id = f"skillopt-rollout-{stamp}-{slugify(task_id)[:24]}"
     workspace_dir = run_dir / "openclaw_workspace"
     agent_dir = run_dir / "openclaw_agent"
     workspace_dir.mkdir(parents=True, exist_ok=True)
@@ -134,7 +143,7 @@ def setup_agent(config: dict[str, Any], run_dir: Path) -> tuple[str, OpenClawTas
         raise RuntimeError(f"failed to add OpenClaw agent: {add_result.stderr or add_result.stdout}")
 
     skill_path = copy_skill_tree(config["openclaw_live_skill_path"], workspace_dir)
-    paths = OpenClawTaskPaths(
+    paths = OpenClawRolloutPaths(
         run_dir=run_dir,
         workspace_dir=workspace_dir,
         agent_dir=agent_dir,
@@ -188,7 +197,7 @@ def run_agent_task(
     }
 
 
-def build_task_message(message: str, paths: OpenClawTaskPaths) -> str:
+def build_rollout_message(message: str, paths: OpenClawRolloutPaths) -> str:
     return f"""Use tools now. Do not answer with a plan before tool calls.
 
 Step 1: call the read tool on this exact workspace skill path:
@@ -213,7 +222,7 @@ User task:
 """
 
 
-def build_continuation_message(last_error: str, paths: OpenClawTaskPaths) -> str:
+def build_continuation_message(last_error: str, paths: OpenClawRolloutPaths) -> str:
     return f"""Use tools now. The previous validation did not pass: {last_error}
 
 Continue in this same session. Do not answer with a plan before tool calls.
@@ -266,78 +275,145 @@ def export_trajectory(agent_id: str, session_key: str, run_dir: Path, output_nam
     }
 
 
-def validate_parsed_result(parsed: dict[str, Any], config: dict[str, Any]) -> None:
+def validate_rollout_result(parsed: dict[str, Any], task: OpenClawRolloutTask) -> None:
     if parsed.get("final_status") != "success":
         raise RuntimeError(f"OpenClaw trajectory final status is not success: {parsed.get('final_status')}")
-    if config.get("require_generated_audio", False) and not parsed.get("generated_audio"):
-        raise RuntimeError("OpenClaw task completed, but no generated audio was found in the trajectory")
+    if task.require_generated_audio and not parsed.get("generated_audio"):
+        raise RuntimeError("OpenClaw rollout completed, but no generated audio was found in the trajectory")
 
 
-def run_openclaw_task(config_path: str) -> Path:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    config = load_config(config_path)
-    run_dir = make_run_dir(config, "openclaw_task")
-    task_id = slugify(str(config.get("task_id", "openclaw-task")))
-    message = str(config["task_message"])
-    timeout_sec = int(config.get("openclaw_timeout_sec", 600))
-    max_turns = int(config.get("openclaw_max_turns", 3))
+def load_jsonl(path: str | Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            rows.append(json.loads(line))
+    return rows
+
+
+def load_rollout_tasks(config: dict[str, Any]) -> list[OpenClawRolloutTask]:
+    raw_tasks = load_jsonl(config["task_path"]) if config.get("task_path") else [config]
+    tasks: list[OpenClawRolloutTask] = []
+    for raw in raw_tasks:
+        task_id = slugify(str(raw.get("task_id", f"task-{len(tasks) + 1}")))
+        message = str(raw.get("task_message") or raw.get("message") or "").strip()
+        if not message:
+            raise ValueError(f"OpenClaw rollout task has no message: {task_id}")
+        tasks.append(
+            OpenClawRolloutTask(
+                task_id=task_id,
+                message=message,
+                require_generated_audio=bool(raw.get("require_generated_audio", config.get("require_generated_audio", False))),
+                timeout_sec=int(raw.get("openclaw_timeout_sec", config.get("openclaw_timeout_sec", 600))),
+                max_turns=int(raw.get("openclaw_max_turns", config.get("openclaw_max_turns", 3))),
+            )
+        )
+    max_tasks = int(config.get("max_tasks", len(tasks)))
+    return tasks[:max_tasks]
+
+
+def summarize_rollout(task: OpenClawRolloutTask, task_dir: Path, parsed: dict[str, Any]) -> dict[str, Any]:
+    generated_audio = parsed.get("generated_audio") or {}
+    return {
+        "task_id": task.task_id,
+        "task_dir": str(task_dir),
+        "final_status": parsed.get("final_status"),
+        "event_count": parsed.get("event_count"),
+        "tool_call_count": len(parsed.get("tool_calls", [])),
+        "tool_result_count": len(parsed.get("tool_results", [])),
+        "generated_audio": generated_audio,
+        "passed": parsed.get("final_status") == "success" and (not task.require_generated_audio or bool(generated_audio)),
+    }
+
+
+def run_one_rollout(config: dict[str, Any], run_dir: Path, task: OpenClawRolloutTask) -> dict[str, Any]:
+    task_dir = run_dir / "rollouts" / task.task_id
+    task_dir.mkdir(parents=True, exist_ok=True)
 
     agent_id: str | None = None
     cleanup: dict[str, Any] | None = None
-    validation_error: str | None = None
     try:
-        agent_id, paths, add_result = setup_agent(config, run_dir)
-        agent_message = build_task_message(message, paths)
-        task = {
-            "task_id": task_id,
+        agent_id, paths, add_result = setup_agent(config, task_dir, task.task_id)
+        agent_message = build_rollout_message(task.message, paths)
+        task_record = {
+            "task_id": task.task_id,
             "message": agent_message,
-            "user_message": message,
+            "user_message": task.message,
+            "require_generated_audio": task.require_generated_audio,
+            "timeout_sec": task.timeout_sec,
+            "max_turns": task.max_turns,
             "agent_id": agent_id,
             "workspace_dir": str(paths.workspace_dir),
             "skill_path": str(paths.skill_path),
             "wrapper_path": str(paths.wrapper_path),
             "live_skill_path": str(config["openclaw_live_skill_path"]),
         }
-        save_json(run_dir / "task.json", task)
-        save_json(run_dir / "agent_setup.json", add_result)
+        save_json(task_dir / "task.json", task_record)
+        save_json(task_dir / "agent_setup.json", add_result)
 
-        for turn in range(1, max_turns + 1):
+        parsed: dict[str, Any] = {}
+        for turn in range(1, task.max_turns + 1):
             task_result = run_agent_task(
                 agent_id=agent_id,
-                task_id=task_id,
+                task_id=task.task_id,
                 message=agent_message,
-                timeout_sec=timeout_sec,
+                timeout_sec=task.timeout_sec,
             )
-            save_json(run_dir / f"openclaw_result_turn_{turn}.json", task_result)
-            save_json(run_dir / "openclaw_result.json", task_result)
+            save_json(task_dir / f"openclaw_result_turn_{turn}.json", task_result)
+            save_json(task_dir / "openclaw_result.json", task_result)
             if task_result["returncode"] != 0:
-                raise RuntimeError(f"OpenClaw task failed: {task_result['stderr'] or task_result['stdout']}")
+                raise RuntimeError(f"OpenClaw rollout failed: {task_result['stderr'] or task_result['stdout']}")
 
-            export_result = export_trajectory(agent_id, task_result["session_key"], run_dir, f"{task_id}-turn-{turn}")
-            save_json(run_dir / f"trajectory_export_turn_{turn}.json", export_result)
-            save_json(run_dir / "trajectory_export.json", export_result)
+            export_result = export_trajectory(agent_id, task_result["session_key"], task_dir, f"{task.task_id}-turn-{turn}")
+            save_json(task_dir / f"trajectory_export_turn_{turn}.json", export_result)
+            save_json(task_dir / "trajectory_export.json", export_result)
             parsed = parse_trajectory_bundle(export_result["bundle_dir"])
-            save_json(run_dir / f"parsed_result_turn_{turn}.json", parsed)
-            save_json(run_dir / "parsed_result.json", parsed)
+            save_json(task_dir / f"parsed_result_turn_{turn}.json", parsed)
+            save_json(task_dir / "parsed_result.json", parsed)
             try:
-                validate_parsed_result(parsed, config)
-                validation_error = None
+                validate_rollout_result(parsed, task)
                 break
             except RuntimeError as exc:
                 validation_error = str(exc)
-                if turn == max_turns:
+                if turn == task.max_turns:
                     raise
                 agent_message = build_continuation_message(validation_error, paths)
+        summary = summarize_rollout(task, task_dir, parsed)
+        save_json(task_dir / "rollout_summary.json", summary)
+        return summary
     finally:
         if agent_id:
             cleanup = delete_agent(agent_id)
-            save_json(run_dir / "agent_cleanup.json", cleanup)
-            shutil.rmtree(run_dir / "openclaw_workspace", ignore_errors=True)
-            shutil.rmtree(run_dir / "openclaw_agent", ignore_errors=True)
-            shutil.rmtree(run_dir / "trajectory_workspace", ignore_errors=True)
+            save_json(task_dir / "agent_cleanup.json", cleanup)
+            if cleanup.get("returncode") != 0:
+                LOGGER.warning("temporary OpenClaw agent cleanup failed: %s", cleanup.get("stderr") or cleanup.get("stdout"))
+            shutil.rmtree(task_dir / "openclaw_workspace", ignore_errors=True)
+            shutil.rmtree(task_dir / "openclaw_agent", ignore_errors=True)
+            shutil.rmtree(task_dir / "trajectory_workspace", ignore_errors=True)
 
-    if cleanup and cleanup.get("returncode") != 0:
-        LOGGER.warning("temporary OpenClaw agent cleanup failed: %s", cleanup.get("stderr") or cleanup.get("stdout"))
 
+def run_openclaw_rollouts(config_path: str) -> Path:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    config = load_config(config_path)
+    run_dir = make_run_dir(config, "openclaw_rollout")
+    tasks = load_rollout_tasks(config)
+    LOGGER.info("starting OpenClaw rollout collection with %d task(s)", len(tasks))
+
+    summaries: list[dict[str, Any]] = []
+    for task in tasks:
+        LOGGER.info("running OpenClaw rollout task %s", task.task_id)
+        summaries.append(run_one_rollout(config, run_dir, task))
+        save_json(run_dir / "rollout_report.json", {"config": config, "tasks": summaries})
+
+    report = {
+        "mode": "openclaw_rollout",
+        "project_root": str(PROJECT_ROOT),
+        "config": config,
+        "num_tasks": len(tasks),
+        "num_passed": sum(1 for row in summaries if row.get("passed")),
+        "tasks": summaries,
+    }
+    save_json(run_dir / "rollout_report.json", report)
+    save_json(run_dir / "summary.json", report)
     print(f"saved_run_dir={run_dir}")
+    return run_dir
     return run_dir

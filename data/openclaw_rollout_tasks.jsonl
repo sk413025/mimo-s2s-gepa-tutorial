@@ -1,0 +1,2 @@
+{"task_id":"hank_s2s_smoke","task_message":"請使用 mimo-audio skill 跑 Hank S2S smoke。請先 health check mimo_audio_s2s，然後跑 s2s-smoke。回報 resolved_request、error、backend、audio_path、audio_url、duration_sec、text_channel、n_prompt_examples。","require_generated_audio":true}
+{"task_id":"hank_s2s_smoke_repeat","task_message":"請用 workspace 的 mimo-audio skill 再跑一次 Hank S2S smoke 驗收。請先確認 mimo_audio_s2s health，接著執行 s2s-smoke，最後只回報 backend、audio_path、audio_url、duration_sec、text_channel、n_prompt_examples、error。","require_generated_audio":true}

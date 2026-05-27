@@ -16,3 +16,17 @@ Each item has:
 ```
 
 `prompt_examples_json` stays fixed during this tutorial. GEPA changes the instruction.
+
+`data/openclaw_rollout_tasks.jsonl` drives OpenClaw rollout collection. Each
+line is one JSON object:
+
+```json
+{
+  "task_id": "hank_s2s_smoke",
+  "task_message": "請使用 mimo-audio skill 跑 Hank S2S smoke...",
+  "require_generated_audio": true
+}
+```
+
+`configs/openclaw_rollout.yaml` can cap the number of rows with `max_tasks` so a
+shared-server tutorial run stays lightweight.

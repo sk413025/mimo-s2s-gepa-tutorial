@@ -5,7 +5,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from mimo_s2s_gepa.skillopt.openclaw_runner import run_openclaw_task
+from mimo_s2s_gepa.skillopt import run_openclaw_rollouts
 
 
-run_openclaw_task("configs/openclaw_task.yaml")
+run_openclaw_rollouts("configs/openclaw_rollout.yaml")

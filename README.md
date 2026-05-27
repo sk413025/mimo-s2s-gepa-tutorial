@@ -49,7 +49,7 @@ gepa:
     -> Gemma4 evaluator_lm listens to wav and gives feedback
     -> Gemma4 reflection_lm helps GEPA revise the instruction-writing prompt
 
-openclaw_task:
+openclaw_rollout:
   isolated OpenClaw agent + copied mimo-audio skill
     -> read workspace SKILL.md
     -> exec wrapper health check
@@ -106,7 +106,7 @@ Run the available modes:
 ```bash
 python scripts/run_baseline.py
 python scripts/run_gepa.py
-python scripts/run_openclaw_task.py
+python scripts/run_openclaw_rollout.py
 ```
 
 Outputs are saved under `outputs/<timestamp>_<mode>/`.
@@ -117,15 +117,15 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
   Gemma4 to evaluate the generated audio.
 - `gepa`: run a tiny GEPA optimization loop. Gemma4 writes instructions,
   evaluates generated audio, and reflects on feedback.
-- `openclaw_task`: run one isolated OpenClaw task with the `mimo-audio` skill
-  and export its trajectory bundle. This is the first step toward true
-  trajectory-based SkillOpt. Its default config requires a generated audio path,
-  so an OpenClaw run that finishes without S2S audio is treated as a failed
-  validation.
+- `openclaw_rollout`: run one or more isolated OpenClaw tasks with the
+  `mimo-audio` skill and export trajectory bundles. This is the data collection
+  layer for true trajectory-based SkillOpt. Its default config requires a
+  generated audio path, so an OpenClaw run that finishes without S2S audio is
+  treated as a failed validation.
 
 Baseline and GEPA runs write `summary.json` and `predictions.json`.
-`openclaw_task` writes `task.json`, OpenClaw result files, exported trajectory
-files, and `parsed_result.json`. Progress is reported through Python logging
+`openclaw_rollout` writes one subdirectory per task under `rollouts/`, plus a
+top-level `rollout_report.json`. Progress is reported through Python logging
 while the run is active.
 
 The generated wav files are written by the MiMo audio wrapper. The run summary
@@ -149,19 +149,22 @@ docs/           concept notes
 outputs/        run outputs, ignored by git
 ```
 
-OpenClaw task runs add:
+OpenClaw rollout runs add:
 
 ```text
-outputs/<timestamp>_openclaw_task/
-  task.json
-  openclaw_result.json
-  parsed_result.json
-  trajectory/
-    events.jsonl
-    artifacts.json
-    prompts.json
-    system-prompt.txt
-    tools.json
+outputs/<timestamp>_openclaw_rollout/
+  rollout_report.json
+  rollouts/<task_id>/
+    task.json
+    openclaw_result.json
+    parsed_result.json
+    rollout_summary.json
+    trajectory/
+      events.jsonl
+      artifacts.json
+      prompts.json
+      system-prompt.txt
+      tools.json
 ```
 
 ## References

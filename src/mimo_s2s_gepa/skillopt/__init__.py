@@ -1,3 +1,3 @@
-from .openclaw_runner import run_openclaw_task
+from .rollout import run_openclaw_rollouts
 
-__all__ = ["run_openclaw_task"]
+__all__ = ["run_openclaw_rollouts"]

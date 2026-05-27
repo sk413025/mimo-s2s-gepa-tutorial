@@ -25,14 +25,15 @@ src/mimo_s2s_gepa/skillopt/
 
 - [x] Keep baseline and GEPA modes intact.
 - [x] Remove the old offline candidate rewrite path.
-- [x] Add `configs/openclaw_task.yaml`.
-- [x] Add `scripts/run_openclaw_task.py`.
+- [x] Add `configs/openclaw_rollout.yaml`.
+- [x] Add `scripts/run_openclaw_rollout.py`.
 - [x] Create a temporary isolated OpenClaw agent and workspace.
 - [x] Copy the live `mimo-audio` skill into that workspace.
 - [x] Run health plus Hank `s2s-smoke` through OpenClaw.
 - [x] Export and parse the OpenClaw trajectory bundle.
-- [x] Require generated audio for the OpenClaw task acceptance gate.
-- [ ] Add a task dataset for repeated OpenClaw rollouts.
+- [x] Require generated audio for the OpenClaw rollout acceptance gate.
+- [x] Add a task dataset for repeated OpenClaw rollouts.
+- [x] Save one rollout subdirectory and summary per task.
 - [ ] Add a candidate `SKILL.md` patch proposer.
 - [ ] Validate candidate skills through fresh OpenClaw rollouts.
 - [ ] Add accept/reject promotion reports without touching the live skill.
@@ -43,23 +44,26 @@ src/mimo_s2s_gepa/skillopt/
 python -m py_compile scripts/*.py src/mimo_s2s_gepa/*.py src/mimo_s2s_gepa/skillopt/*.py
 python scripts/run_baseline.py
 python scripts/run_gepa.py
-python scripts/run_openclaw_task.py
+python scripts/run_openclaw_rollout.py
 ```
 
-## Expected OpenClaw Task Output
+## Expected OpenClaw Rollout Output
 
 ```text
-outputs/<timestamp>_openclaw_task/
-  task.json
-  openclaw_result.json
-  parsed_result.json
-  trajectory/
-    manifest.json
-    events.jsonl
-    artifacts.json
-    prompts.json
-    system-prompt.txt
-    tools.json
+outputs/<timestamp>_openclaw_rollout/
+  rollout_report.json
+  rollouts/<task_id>/
+    task.json
+    openclaw_result.json
+    parsed_result.json
+    rollout_summary.json
+    trajectory/
+      manifest.json
+      events.jsonl
+      artifacts.json
+      prompts.json
+      system-prompt.txt
+      tools.json
 ```
 
 ## Acceptance Criteria
