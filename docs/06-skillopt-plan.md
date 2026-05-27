@@ -41,6 +41,7 @@ src/mimo_s2s_gepa/skillopt/
 - [x] Add accept/reject promotion reports without touching the live skill.
 - [x] Add a DSPy GEPA stage that optimizes the skill candidate proposer.
 - [x] Add stricter guided and skill-driven validation tasks.
+- [x] Add candidate registry/history across runs.
 
 ## Acceptance Commands
 
@@ -110,6 +111,7 @@ outputs/<timestamp>_skill_candidate/
   candidates/skill_v0001/edits.json
   proposal.json
   summary.json
+outputs/candidate_registry.jsonl
 ```
 
 ## Candidate Criteria
@@ -121,6 +123,8 @@ outputs/<timestamp>_skill_candidate/
 - The candidate keeps `mimo_audio_s2s`, health, `s2s`, and `s2s-smoke` guidance.
 - The candidate does not introduce TTS or unrelated workflows.
 - Invalid edits are rejected before rollout.
+- Candidate creation appends a `candidate_created` registry row with candidate
+  hash, edits, diff metadata, and trajectory analysis source.
 
 ## Expected Skill Validation Output
 
@@ -132,6 +136,7 @@ outputs/<timestamp>_skill_validation/
   summary.json
   baseline_rollout/
   candidate_rollout/
+outputs/candidate_registry.jsonl
 ```
 
 ## Validation Criteria
@@ -151,6 +156,8 @@ outputs/<timestamp>_skill_validation/
 - Clean first-turn completion scores higher than completion that needs a
   continuation turn, so validation can distinguish fragile task execution from
   direct success.
+- Validation appends a `candidate_validated` registry row with decision, scores,
+  audio paths, and continuation-task flags.
 
 ## Expected SkillOpt GEPA Output
 
@@ -169,6 +176,7 @@ outputs/<timestamp>_skillopt_gepa/
   final_candidate/proposal.json
   stats.json
   summary.json
+outputs/candidate_registry.jsonl
 ```
 
 ## SkillOpt GEPA Criteria
@@ -180,3 +188,5 @@ outputs/<timestamp>_skillopt_gepa/
 - The live OpenClaw skill is not overwritten.
 - Metric feedback includes baseline pass count, candidate pass count,
   validation scores, decision reason, and generated audio paths when present.
+- Every GEPA metric candidate and final candidate is registered with hashes and
+  patch edits.

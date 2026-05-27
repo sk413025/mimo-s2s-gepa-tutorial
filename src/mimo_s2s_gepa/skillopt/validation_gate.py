@@ -6,6 +6,7 @@ from typing import Any
 
 from ..config import PROJECT_ROOT, load_config, resolve_path
 from ..runner import make_run_dir, save_json
+from .registry import append_registry_record, build_validation_record
 from .rollout import load_rollout_tasks, run_one_rollout
 from .trajectory_analyzer import load_json
 
@@ -123,6 +124,18 @@ def run_skill_validation(config_path: str) -> Path:
         candidate_report=candidate_report,
     )
     save_json(run_dir / "decision.json", decision)
+    registry_file = append_registry_record(
+        config,
+        build_validation_record(
+            source="skill_validation",
+            run_dir=run_dir,
+            candidate_dir=candidate_dir,
+            proposal=proposal,
+            decision=decision,
+            baseline_report=baseline_report,
+            candidate_report=candidate_report,
+        ),
+    )
 
     summary = {
         "mode": "skill_validation",
@@ -132,6 +145,7 @@ def run_skill_validation(config_path: str) -> Path:
         "baseline": baseline_report,
         "candidate": candidate_report,
         "decision": decision,
+        "candidate_registry_path": str(registry_file),
     }
     save_json(run_dir / "summary.json", summary)
     print(f"saved_run_dir={run_dir}")

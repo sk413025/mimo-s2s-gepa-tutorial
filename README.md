@@ -204,6 +204,8 @@ src/mimo_s2s_gepa/skillopt/
                 OpenClaw runner and trajectory parsing helpers
 docs/           concept notes
 outputs/        run outputs, ignored by git
+outputs/candidate_registry.jsonl
+                append-only candidate and validation history
 ```
 
 OpenClaw rollout runs add:
@@ -245,6 +247,9 @@ outputs/<timestamp>_skill_candidate/
   summary.json
 ```
 
+They also append a `candidate_created` row to
+`outputs/candidate_registry.jsonl`.
+
 Skill validation runs add:
 
 ```text
@@ -256,6 +261,9 @@ outputs/<timestamp>_skill_validation/
   baseline_rollout/
   candidate_rollout/
 ```
+
+They also append a `candidate_validated` row to
+`outputs/candidate_registry.jsonl`.
 
 SkillOpt validation tasks can run in two modes:
 
@@ -285,6 +293,14 @@ outputs/<timestamp>_skillopt_gepa/
   stats.json
   summary.json
 ```
+
+Each GEPA metric candidate appends registry rows for creation and validation.
+The final optimized candidate appends a `candidate_created` row.
+
+Registry rows include candidate hashes, patch edits, diff metadata, validation
+scores, accept/reject reasons, generated audio paths, and continuation-task
+flags. Set `candidate_registry_path` in a config file to write this history to a
+different JSONL path.
 
 ## References
 

@@ -21,6 +21,7 @@ from .skill_candidate import (
     validate_candidate_skill,
 )
 from .patching import apply_skill_edits, parse_edits_json, validate_edits
+from .registry import append_registry_record, build_candidate_record, build_validation_record
 from .trajectory_analyzer import load_json
 from .validation_gate import build_decision, run_rollout_set
 
@@ -150,6 +151,19 @@ class SkillOptGepaMetric:
                 validation_errors=validation_errors,
             )
             validation_errors.extend(validate_candidate_skill(candidate_skill))
+            proposal = load_json(call_dir / "proposal.json")
+            append_registry_record(
+                self.config,
+                build_candidate_record(
+                    source="skillopt_gepa_metric",
+                    run_dir=self.run_dir,
+                    metric_call_dir=call_dir,
+                    candidate_skill_path=candidate_path,
+                    candidate_diff_path=None,
+                    proposal=proposal,
+                    analysis_dir="",
+                ),
+            )
 
             if validation_errors:
                 feedback = "Candidate SKILL.md failed static validation: " + "; ".join(validation_errors)
@@ -165,6 +179,18 @@ class SkillOptGepaMetric:
                 candidate_report=candidate_report,
             )
             save_json(call_dir / "decision.json", decision)
+            append_registry_record(
+                self.config,
+                build_validation_record(
+                    source="skillopt_gepa_metric",
+                    run_dir=self.run_dir,
+                    candidate_dir=call_dir,
+                    proposal=proposal,
+                    decision=decision,
+                    baseline_report=self.baseline_report,
+                    candidate_report=candidate_report,
+                ),
+            )
 
             baseline_passed = int(decision["baseline_passed"])
             candidate_passed = int(decision["candidate_passed"])
@@ -244,6 +270,17 @@ def save_final_candidate(
         "raw_proposal_notes_json": str(prediction.proposal_notes_json),
     }
     save_json(final_dir / "proposal.json", result)
+    append_registry_record(
+        config,
+        build_candidate_record(
+            source="skillopt_gepa_final",
+            run_dir=run_dir,
+            candidate_skill_path=candidate_path,
+            candidate_diff_path=None,
+            proposal=result,
+            analysis_dir="",
+        ),
+    )
     return result
 
 

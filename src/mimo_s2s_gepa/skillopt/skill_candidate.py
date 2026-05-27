@@ -12,6 +12,7 @@ from ..config import PROJECT_ROOT, load_config, resolve_path
 from ..runner import make_run_dir, save_json
 from .openclaw_skill import read_live_skill
 from .patching import apply_skill_edits, parse_edits_json, validate_edits
+from .registry import append_registry_record, build_candidate_record
 from .trajectory_analyzer import load_json
 
 LOGGER = logging.getLogger(__name__)
@@ -250,6 +251,20 @@ def propose_candidate(config: dict[str, Any], analysis_dir: Path, run_dir: Path)
         proposal=proposal,
         edits=edits,
     )
+    registry_file = append_registry_record(
+        config,
+        build_candidate_record(
+            source="skill_candidate",
+            run_dir=run_dir,
+            candidate_skill_path=run_dir / "candidates" / "skill_v0001" / "SKILL.md",
+            candidate_diff_path=run_dir / "candidates" / "skill_v0001" / "diff.md",
+            proposal=proposal,
+            analysis_dir=str(analysis_dir),
+        ),
+    )
+    proposal["candidate_registry_path"] = str(registry_file)
+    save_json(run_dir / "proposal.json", proposal)
+    save_json(run_dir / "summary.json", proposal)
 
     if validation_errors:
         raise RuntimeError(f"candidate skill failed validation: {validation_errors}")
