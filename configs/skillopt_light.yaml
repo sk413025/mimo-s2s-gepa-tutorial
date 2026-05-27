@@ -1,0 +1,29 @@
+# Gemma4 vLLM runs on a Tailscale-reachable machine.
+gemma_base_url: "http://100.70.253.93:8000/v1"
+gemma_model: "openai/google/gemma-4-E4B-it"
+gemma_api_key: "sk-local"
+gemma_temperature: 0.2
+gemma_max_tokens: 1200
+proposer_temperature: 0.3
+proposer_max_tokens: 3200
+evaluator_temperature: 0.0
+evaluator_max_tokens: 800
+
+# MiMo S2S wrapper runs on this audio/Triton machine over Tailscale.
+mimo_base_url: "http://100.70.78.122:19080/v1"
+mimo_model: "openai/mimo-audio-s2s"
+mimo_api_key: "sk-local"
+
+data_path: "data/hank_sample.json"
+output_dir: "outputs"
+
+openclaw_skill_path: "/home/sbplab/.openclaw/workspace/skills/mimo-audio/SKILL.md"
+allow_live_promote: false
+
+train_size: 1
+val_size: 1
+timeout_sec: 240
+max_new_tokens: 32
+min_new_tokens: 0
+repetition_penalty: 1.35
+decode_preset: "deterministic"

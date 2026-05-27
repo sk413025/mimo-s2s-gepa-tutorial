@@ -10,6 +10,9 @@ from .s2s_client import call_mimo_s2s
 class WriteInstruction(dspy.Signature):
     """Write one MiMo S2S instruction for restoring distorted LDV speech."""
 
+    skill_context: str = dspy.InputField(
+        desc="Relevant OpenClaw SKILL.md guidance. Use it as policy context when present."
+    )
     restoration_goal: str = dspy.InputField()
     input_note: str = dspy.InputField()
     instruction: str = dspy.OutputField(
@@ -31,8 +34,13 @@ class MiMoS2SProgram(dspy.Module):
         input_note: str,
         audio_path: str,
         prompt_examples_json: str,
+        skill_context: str = "",
     ) -> dspy.Prediction:
-        written = self.instruction_writer(restoration_goal=restoration_goal, input_note=input_note)
+        written = self.instruction_writer(
+            skill_context=skill_context or "No external skill guidance was provided.",
+            restoration_goal=restoration_goal,
+            input_note=input_note,
+        )
         instruction = " ".join(str(written.instruction).split())
 
         result = call_mimo_s2s(

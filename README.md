@@ -1,10 +1,13 @@
 # MiMo S2S GEPA Tutorial
 
-This is a small teaching project for optimizing MiMo-Audio S2S instructions with DSPy GEPA.
+This is a small teaching project for optimizing MiMo-Audio S2S instructions and
+OpenClaw S2S skill text with DSPy.
 
 The point is not to train MiMo. MiMo S2S always remains the audio generation
-model. GEPA optimizes the text `instruction` that is sent to MiMo S2S, using
-Gemma4 for the text-side work around that audio model.
+model. GEPA optimizes the text `instruction` that is sent to MiMo S2S.
+SkillOpt-lite treats the OpenClaw `mimo-audio` `SKILL.md` as a candidate skill
+artifact, writes a revised candidate, validates it, and records an accept/reject
+decision without overwriting the live OpenClaw skill.
 
 ## Model Roles
 
@@ -18,6 +21,8 @@ Gemma4 has three separate roles:
   then returns score and feedback.
 - `reflection_lm`: used only by GEPA to revise the instruction-writing prompt
   from evaluator feedback.
+- `skill_proposer_lm`: used by SkillOpt-lite to rewrite a candidate OpenClaw
+  `SKILL.md` from run feedback.
 
 The audio evaluator is expressed as a normal DSPy signature field:
 
@@ -43,6 +48,13 @@ gepa:
     -> MiMo S2S wrapper generates wav
     -> Gemma4 evaluator_lm listens to wav and gives feedback
     -> Gemma4 reflection_lm helps GEPA revise the instruction-writing prompt
+
+skillopt:
+  OpenClaw mimo-audio SKILL.md
+    -> validate the current skill snapshot on S2S samples
+    -> Gemma4 skill_proposer_lm writes a candidate SKILL.md
+    -> validate the candidate skill on the same validation set
+    -> write diff and accept/reject decision
 ```
 
 ## Quick Start
@@ -93,6 +105,7 @@ Run the two modes:
 ```bash
 python scripts/run_baseline.py
 python scripts/run_gepa.py
+python scripts/run_skillopt.py
 ```
 
 Outputs are saved under `outputs/<timestamp>_<mode>/`.
@@ -103,6 +116,9 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
   Gemma4 to evaluate the generated audio.
 - `gepa`: run a tiny GEPA optimization loop. Gemma4 writes instructions,
   evaluates generated audio, and reflects on feedback.
+- `skillopt`: run a small SkillOpt-like loop over the OpenClaw `mimo-audio`
+  `SKILL.md`. It writes candidate files and reports under `outputs/`, but does
+  not overwrite the live OpenClaw skill unless `allow_live_promote` is set.
 
 Each run writes `summary.json` and `predictions.json`. Progress is reported
 through Python logging while the run is active.
@@ -124,4 +140,18 @@ scripts/        short entrypoints for each mode
 src/            role-based tutorial modules
 docs/           concept notes
 outputs/        run outputs, ignored by git
+```
+
+SkillOpt-lite runs add:
+
+```text
+outputs/<timestamp>_skillopt/
+  initial/SKILL.md
+  candidates/skill_v0001/SKILL.md
+  candidates/skill_v0001/diff.md
+  training_report.json
+  baseline_report.json
+  candidate_report.json
+  decision.json
+  summary.json
 ```
