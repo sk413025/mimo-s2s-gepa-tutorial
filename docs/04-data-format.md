@@ -28,5 +28,5 @@ line is one JSON object:
 }
 ```
 
-`configs/openclaw_rollout.yaml` can cap the number of rows with `max_tasks` so a
+`configs/collect_rollouts.yaml` can cap the number of rows with `max_tasks` so a
 shared-server tutorial run stays lightweight.

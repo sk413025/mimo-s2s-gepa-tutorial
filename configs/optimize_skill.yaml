@@ -1,4 +1,4 @@
-# Optimize the SkillOpt candidate proposer with DSPy GEPA.
+# Optimize the OpenClaw skill edit proposer with DSPy GEPA.
 output_dir: "outputs"
 
 # Leave empty to use the latest outputs/*_trajectory_analysis directory.

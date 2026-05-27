@@ -8,4 +8,4 @@ sys.path.insert(0, str(ROOT / "src"))
 from mimo_s2s_gepa.skillopt.trajectory_analyzer import run_trajectory_analysis
 
 
-run_trajectory_analysis("configs/analyze_rollouts.yaml")
+run_trajectory_analysis("configs/analyze_trajectories.yaml")

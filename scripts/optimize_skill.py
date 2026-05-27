@@ -8,4 +8,4 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from mimo_s2s_gepa.skillopt import run_skillopt_gepa
 
 
-run_skillopt_gepa("configs/skillopt_gepa_light.yaml")
+run_skillopt_gepa("configs/optimize_skill.yaml")

@@ -1,4 +1,4 @@
-# OpenClaw rollout collection for the workspace mimo-audio skill.
+# Collect OpenClaw rollout trajectories for the workspace mimo-audio skill.
 output_dir: "outputs"
 task_path: "data/openclaw_rollout_tasks.jsonl"
 

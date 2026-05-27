@@ -1,4 +1,4 @@
-# Analyze the latest OpenClaw rollout run with Gemma4.
+# Analyze the latest OpenClaw rollout trajectories with Gemma4.
 output_dir: "outputs"
 
 # Leave empty to analyze the latest outputs/*_openclaw_rollout directory.

@@ -52,7 +52,7 @@ gepa:
     -> Gemma4 evaluator_lm listens to wav and gives feedback
     -> Gemma4 reflection_lm helps GEPA revise the instruction-writing prompt
 
-openclaw_rollout:
+collect_rollouts:
   isolated OpenClaw agent + copied mimo-audio skill
     -> read workspace SKILL.md
     -> exec wrapper health check
@@ -60,13 +60,13 @@ openclaw_rollout:
     -> export trajectory bundle
     -> parse tool calls, tool results, and generated audio
 
-trajectory_analysis:
+analyze_trajectories:
   latest OpenClaw rollout report + parsed trajectories
     -> Gemma4 analyzer reads compact trajectory evidence
     -> write structured SkillOpt feedback JSON
     -> do not mutate SKILL.md
 
-skillopt_gepa:
+optimize_skill:
   trajectory_feedback.json + live SKILL.md
     -> DSPy GEPA optimizes the skill candidate proposer prompt
     -> each metric call writes a candidate SKILL.md
@@ -74,12 +74,18 @@ skillopt_gepa:
     -> validation feedback is returned to GEPA
     -> write final_candidate/SKILL.md
 
-skill_validation:
+validate_candidate:
   live SKILL.md and SkillOpt GEPA final_candidate/SKILL.md
     -> run fresh baseline OpenClaw rollouts
     -> run fresh candidate OpenClaw rollouts
     -> compare validation scores
     -> accept only on strict improvement
+
+promote_candidate:
+  validation decision + final_candidate/SKILL.md
+    -> write review package and diff
+    -> dry-run by default
+    -> optionally apply accepted candidate to the live skill
 ```
 
 ## Quick Start
@@ -125,15 +131,15 @@ If `tailscale` is not in your shell path, inspect the interface directly:
 ip -4 addr show tailscale0
 ```
 
-Run the available modes:
+Run the available stages:
 
 ```bash
 python scripts/run_baseline.py
 python scripts/run_gepa.py
-python scripts/run_openclaw_rollout.py
-python scripts/analyze_rollouts.py
-python scripts/run_skillopt_gepa.py
-python scripts/validate_skill_candidate.py
+python scripts/collect_rollouts.py
+python scripts/analyze_trajectories.py
+python scripts/optimize_skill.py
+python scripts/validate_candidate.py
 python scripts/promote_candidate.py
 ```
 
@@ -145,35 +151,35 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
   Gemma4 to evaluate the generated audio.
 - `gepa`: run a tiny GEPA optimization loop. Gemma4 writes instructions,
   evaluates generated audio, and reflects on feedback.
-- `openclaw_rollout`: run one or more isolated OpenClaw tasks with the
+- `collect_rollouts`: run one or more isolated OpenClaw tasks with the
   `mimo-audio` skill and export trajectory bundles. This is the data collection
   layer for true trajectory-based SkillOpt. Its default config requires a
   generated audio path, so an OpenClaw run that finishes without S2S audio is
   treated as a failed validation.
-- `trajectory_analysis`: ask Gemma4 to analyze a rollout run and produce
+- `analyze_trajectories`: ask Gemma4 to analyze a rollout run and produce
   structured SkillOpt feedback. This stage only writes analysis files; it does
   not write or edit candidate skills.
-- `skillopt_gepa`: use `dspy.GEPA` to optimize the candidate skill proposer.
+- `optimize_skill`: use `dspy.GEPA` to optimize the candidate skill proposer.
   The metric reuses the OpenClaw validation path, so feedback comes from fresh
   candidate rollouts instead of only offline text review. This is the only
   candidate proposal path in the project.
-- `skill_validation`: run fresh baseline and SkillOpt GEPA final-candidate
+- `validate_candidate`: run fresh baseline and SkillOpt GEPA final-candidate
   OpenClaw rollouts, then accept the candidate only if it strictly improves the
   validation score. Ties are rejected.
-- `skill_promotion`: review the latest validation decision and write a
+- `promote_candidate`: review the latest validation decision and write a
   promotion report, candidate copy, live-skill backup, and diff. It is dry-run by
   default and only overwrites the live OpenClaw skill when `apply: true`.
 
 Baseline and GEPA runs write `summary.json` and `predictions.json`.
-`openclaw_rollout` writes one subdirectory per task under `rollouts/`, plus a
+`collect_rollouts` writes one subdirectory per task under `rollouts/`, plus a
 top-level `rollout_report.json`. Progress is reported through Python logging
 while the run is active.
-`trajectory_analysis` writes `trajectory_feedback.json` and
+`analyze_trajectories` writes `trajectory_feedback.json` and
 `rollout_evidence.json`.
-`skillopt_gepa` writes a fresh baseline report, per-metric-call candidates and
+`optimize_skill` writes a fresh baseline report, per-metric-call candidates and
 decisions, aggregate `stats.json`, plus a final candidate proposal.
-`skill_validation` writes baseline/candidate rollout reports plus `decision.json`.
-`skill_promotion` writes a review package for the latest validation result. It
+`validate_candidate` writes baseline/candidate rollout reports plus `decision.json`.
+`promote_candidate` writes a review package for the latest validation result. It
 does not modify the live skill unless explicitly configured to apply.
 
 The generated wav files are written by the MiMo audio wrapper. The run summary
