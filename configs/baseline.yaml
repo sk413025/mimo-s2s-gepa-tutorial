@@ -5,7 +5,6 @@ gemma_api_key: "sk-local"
 gemma_temperature: 0.2
 gemma_max_tokens: 800
 evaluator: "gemma"
-evaluator_audio: true
 evaluator_temperature: 0.0
 evaluator_max_tokens: 800
 

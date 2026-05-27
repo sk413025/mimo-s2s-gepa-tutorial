@@ -22,16 +22,6 @@ class EvaluateGeneratedAudio(dspy.Signature):
     feedback: str = dspy.OutputField(desc="Concise feedback for improving the MiMo S2S instruction.")
 
 
-class EvaluateRunEvidence(dspy.Signature):
-    """Evaluate MiMo S2S run evidence and return a score plus feedback."""
-
-    expected_transcript: str = dspy.InputField()
-    candidate_instruction: str = dspy.InputField()
-    run_evidence: str = dspy.InputField()
-    score: float = dspy.OutputField(desc="A score from 0.0 to 1.0.")
-    feedback: str = dspy.OutputField(desc="Concise feedback for improving the MiMo S2S instruction.")
-
-
 def wav_duration(path: str) -> float | None:
     if not path or not Path(path).is_file():
         return None
@@ -114,9 +104,7 @@ def build_evaluator_lm(config: dict[str, Any]) -> CountingLM:
 
 def gemma_metric(config: dict[str, Any]) -> Callable[..., ScoreWithFeedback]:
     evaluator_lm = build_evaluator_lm(config)
-    evaluator_audio = bool(config.get("evaluator_audio", True))
     audio_evaluator = dspy.Predict(EvaluateGeneratedAudio)
-    text_evaluator = dspy.Predict(EvaluateRunEvidence)
 
     def evaluate(
         gold: dspy.Example,
@@ -142,27 +130,19 @@ def gemma_metric(config: dict[str, Any]) -> Callable[..., ScoreWithFeedback]:
         )
 
         try:
+            if not pred.audio_path or not Path(pred.audio_path).is_file():
+                return ScoreWithFeedback(
+                    score=rule_score.score,
+                    feedback=f"{rule_score.feedback}\n- gemma_evaluator_skipped=missing_audio_file",
+                )
+
             with dspy.context(lm=evaluator_lm):
-                if evaluator_audio and pred.audio_path and Path(pred.audio_path).is_file():
-                    judgment = audio_evaluator(
-                        expected_transcript=gold.expected_transcript,
-                        candidate_instruction=pred.instruction,
-                        run_evidence=run_evidence,
-                        generated_audio=dspy.Audio.from_file(pred.audio_path),
-                    )
-                elif evaluator_audio and str(pred.audio_url).startswith(("http://", "https://")):
-                    judgment = audio_evaluator(
-                        expected_transcript=gold.expected_transcript,
-                        candidate_instruction=pred.instruction,
-                        run_evidence=run_evidence,
-                        generated_audio=dspy.Audio.from_url(pred.audio_url),
-                    )
-                else:
-                    judgment = text_evaluator(
-                        expected_transcript=gold.expected_transcript,
-                        candidate_instruction=pred.instruction,
-                        run_evidence=run_evidence,
-                    )
+                judgment = audio_evaluator(
+                    expected_transcript=gold.expected_transcript,
+                    candidate_instruction=pred.instruction,
+                    run_evidence=run_evidence,
+                    generated_audio=dspy.Audio.from_file(pred.audio_path),
+                )
 
             score = max(0.0, min(1.0, float(judgment.score)))
             feedback = str(judgment.feedback).strip()
@@ -195,6 +175,3 @@ def build_metric(config: dict[str, Any]) -> Callable[..., ScoreWithFeedback]:
     if evaluator == "rule":
         return rule_metric
     raise ValueError(f"Unknown evaluator: {evaluator}")
-
-
-metric = rule_metric

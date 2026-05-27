@@ -1,8 +1,3 @@
-# Gemma4 vLLM runs on a Tailscale-reachable machine.
-gemma_base_url: "http://100.70.253.93:8000/v1"
-gemma_model: "openai/google/gemma-4-E4B-it"
-gemma_api_key: "sk-local"
-
 # MiMo S2S wrapper runs on this audio/Triton machine over Tailscale.
 mimo_base_url: "http://100.70.78.122:19080/v1"
 mimo_model: "openai/mimo-audio-s2s"

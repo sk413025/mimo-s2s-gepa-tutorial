@@ -7,7 +7,6 @@ gemma_max_tokens: 800
 reflection_temperature: 1.0
 reflection_max_tokens: 2400
 evaluator: "gemma"
-evaluator_audio: true
 evaluator_temperature: 0.0
 evaluator_max_tokens: 800
 

@@ -62,6 +62,4 @@ class MiMoS2SProgram(dspy.Module):
             duration_sec=float(result.get("duration_sec") or 0),
             backend=result.get("backend", ""),
             error=result.get("error", ""),
-            raw_response=result,
         )
-
