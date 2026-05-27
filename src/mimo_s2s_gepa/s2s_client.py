@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 import dspy
 
-from .counters import COUNTERS
+LOGGER = logging.getLogger(__name__)
 
 
 def normalize_audio_url(result: dict[str, Any], api_base: str) -> dict[str, Any]:
@@ -46,7 +47,7 @@ def call_mimo_s2s(
     decoding: dict[str, Any],
     timeout_sec: float,
 ) -> dict[str, Any]:
-    COUNTERS["mimo_s2s_calls"] += 1
+    LOGGER.info("calling MiMo S2S model: %s", model)
     lm = dspy.LM(model, api_base=api_base, api_key=api_key, cache=False)
     outputs = lm(
         messages=[

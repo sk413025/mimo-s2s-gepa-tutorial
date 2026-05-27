@@ -104,16 +104,8 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
 - `gepa`: run a tiny GEPA optimization loop. Gemma4 writes instructions,
   evaluates generated audio, and reflects on feedback.
 
-Each run writes `summary.json`, including logical counters:
-
-```json
-{
-  "task_lm_calls": 1,
-  "reflection_lm_calls": 0,
-  "evaluator_lm_calls": 1,
-  "mimo_s2s_calls": 1
-}
-```
+Each run writes `summary.json` and `predictions.json`. Progress is reported
+through Python logging while the run is active.
 
 The generated wav files are written by the MiMo audio wrapper. The run summary
 records both `audio_path` and `audio_url`, for example:

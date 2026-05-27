@@ -6,8 +6,6 @@ from typing import Any, Callable
 import dspy
 from dspy.teleprompt.gepa.gepa_utils import ScoreWithFeedback
 
-from .lm import CountingLM
-
 
 class EvaluateGeneratedAudio(dspy.Signature):
     """Evaluate generated speech audio and return a score plus feedback."""
@@ -20,15 +18,14 @@ class EvaluateGeneratedAudio(dspy.Signature):
     feedback: str = dspy.OutputField(desc="Concise feedback for improving the MiMo S2S instruction.")
 
 
-def build_evaluator_lm(config: dict[str, Any]) -> CountingLM:
-    return CountingLM(
+def build_evaluator_lm(config: dict[str, Any]) -> dspy.LM:
+    return dspy.LM(
         config["gemma_model"],
         api_base=config["gemma_base_url"],
         api_key=config.get("gemma_api_key", "sk-local"),
         temperature=float(config.get("evaluator_temperature", 0.0)),
         max_tokens=int(config.get("evaluator_max_tokens", 800)),
         cache=False,
-        counter_key="evaluator_lm_calls",
     )
 
 
