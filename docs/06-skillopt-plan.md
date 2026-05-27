@@ -26,7 +26,8 @@ src/mimo_s2s_gepa/skillopt/
 - [x] Keep baseline and GEPA modes intact.
 - [x] Remove the old offline candidate rewrite path.
 - [x] Add `configs/collect_rollouts.yaml`.
-- [x] Add `scripts/collect_rollouts.py`.
+- [x] Add `scripts/run_skillopt.py` as the beginner-facing SkillOpt entrypoint.
+- [x] Move single-stage SkillOpt scripts under `scripts/stages/`.
 - [x] Create a temporary isolated OpenClaw agent and workspace.
 - [x] Copy the live `mimo-audio` skill into that workspace.
 - [x] Run health plus Hank `s2s-smoke` through OpenClaw.
@@ -49,14 +50,15 @@ src/mimo_s2s_gepa/skillopt/
 ## Acceptance Commands
 
 ```bash
-python -m py_compile scripts/*.py src/mimo_s2s_gepa/*.py src/mimo_s2s_gepa/skillopt/*.py
+python -m py_compile scripts/*.py scripts/stages/*.py src/mimo_s2s_gepa/*.py src/mimo_s2s_gepa/skillopt/*.py
 python scripts/run_baseline.py
 python scripts/run_gepa.py
-python scripts/collect_rollouts.py
-python scripts/analyze_trajectories.py
-python scripts/optimize_skill.py
-python scripts/validate_candidate.py
-python scripts/promote_candidate.py
+python scripts/run_skillopt.py
+python scripts/run_skillopt.py collect
+python scripts/run_skillopt.py analyze
+python scripts/run_skillopt.py optimize
+python scripts/run_skillopt.py validate
+python scripts/run_skillopt.py promote
 ```
 
 ## Expected OpenClaw Rollout Output

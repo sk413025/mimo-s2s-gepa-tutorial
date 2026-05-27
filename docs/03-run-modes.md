@@ -1,5 +1,22 @@
 # Run Modes
 
+Most users should start with one of the three top-level scripts:
+
+```bash
+python scripts/run_baseline.py
+python scripts/run_gepa.py
+python scripts/run_skillopt.py
+```
+
+`run_skillopt.py` defaults to the full teaching flow:
+
+```text
+collect -> analyze -> optimize -> validate -> promote dry-run
+```
+
+The single-stage scripts below are for debugging or repeating one stage without
+rerunning the whole flow.
+
 `baseline` asks Gemma4 to write one instruction, sends it to MiMo, then asks
 Gemma4 to evaluate the run evidence.
 
@@ -19,7 +36,8 @@ python scripts/run_gepa.py
 exports each trajectory, and parses generated audio paths.
 
 ```bash
-python scripts/collect_rollouts.py
+python scripts/run_skillopt.py collect
+# or: python scripts/stages/collect_rollouts.py
 ```
 
 OpenClaw rollout output includes a top-level `rollout_report.json` and one
@@ -35,7 +53,8 @@ trajectory export; it does not overwrite the live OpenClaw skill.
 SkillOpt feedback.
 
 ```bash
-python scripts/analyze_trajectories.py
+python scripts/run_skillopt.py analyze
+# or: python scripts/stages/analyze_trajectories.py
 ```
 
 Leave `rollout_run_dir` empty in `configs/analyze_trajectories.yaml` to analyze the
@@ -46,7 +65,8 @@ latest `outputs/*_openclaw_rollout` directory. The analysis stage writes
 candidate proposer.
 
 ```bash
-python scripts/optimize_skill.py
+python scripts/run_skillopt.py optimize
+# or: python scripts/stages/optimize_skill.py
 ```
 
 Leave `trajectory_analysis_dir` empty in `configs/optimize_skill.yaml` to
@@ -61,7 +81,8 @@ candidates and the final candidate are recorded in
 then writes an accept/reject decision.
 
 ```bash
-python scripts/validate_candidate.py
+python scripts/run_skillopt.py validate
+# or: python scripts/stages/validate_candidate.py
 ```
 
 Leave `candidate_dir` empty in `configs/validate_candidate.yaml` to use
@@ -75,7 +96,8 @@ skill-driven OpenClaw tasks. It also appends a validation row to
 `promote_candidate` turns a validation result into a reviewable promotion package.
 
 ```bash
-python scripts/promote_candidate.py
+python scripts/run_skillopt.py promote
+# or: python scripts/stages/promote_candidate.py
 ```
 
 Leave `skill_validation_dir` empty in `configs/promote_candidate.yaml` to use

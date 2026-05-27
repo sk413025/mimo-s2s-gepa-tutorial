@@ -131,26 +131,41 @@ If `tailscale` is not in your shell path, inspect the interface directly:
 ip -4 addr show tailscale0
 ```
 
-Run the available stages:
+Run the three top-level tutorials:
 
 ```bash
 python scripts/run_baseline.py
 python scripts/run_gepa.py
-python scripts/collect_rollouts.py
-python scripts/analyze_trajectories.py
-python scripts/optimize_skill.py
-python scripts/validate_candidate.py
-python scripts/promote_candidate.py
+python scripts/run_skillopt.py
 ```
 
 Outputs are saved under `outputs/<timestamp>_<mode>/`.
 
-## Modes
+## Top-Level Scripts
 
 - `baseline`: ask Gemma4 to write one instruction, run MiMo S2S once, then ask
   Gemma4 to evaluate the generated audio.
 - `gepa`: run a tiny GEPA optimization loop. Gemma4 writes instructions,
   evaluates generated audio, and reflects on feedback.
+- `skillopt`: run the OpenClaw SkillOpt teaching flow. By default this runs
+  collection, trajectory analysis, DSPy GEPA optimization, validation, and a
+  promotion dry-run. It never applies the live skill by default.
+
+Run individual SkillOpt stages when debugging:
+
+```bash
+python scripts/run_skillopt.py collect
+python scripts/run_skillopt.py analyze
+python scripts/run_skillopt.py optimize
+python scripts/run_skillopt.py validate
+python scripts/run_skillopt.py promote
+```
+
+Use `python scripts/run_skillopt.py promote --apply` only after reviewing the
+dry-run report.
+
+## SkillOpt Stages
+
 - `collect_rollouts`: run one or more isolated OpenClaw tasks with the
   `mimo-audio` skill and export trajectory bundles. This is the data collection
   layer for true trajectory-based SkillOpt. Its default config requires a
@@ -197,7 +212,8 @@ configs/        service URLs and run budgets
 data/           tiny Hank sample dataset
 data/openclaw_skillopt_validation_tasks.jsonl
                 stricter SkillOpt validation tasks for OpenClaw rollouts
-scripts/        short entrypoints for each mode
+scripts/        top-level tutorial entrypoints
+scripts/stages/ advanced single-stage entrypoints
 src/            role-based tutorial modules
 src/mimo_s2s_gepa/skillopt/
                 OpenClaw runner and trajectory parsing helpers
