@@ -1,0 +1,15 @@
+# Promote a validated candidate SKILL.md into the live OpenClaw skill.
+# Default is review-only and never overwrites the live skill.
+output_dir: "outputs"
+
+# Leave empty to use the latest outputs/*_skill_validation directory.
+skill_validation_dir: ""
+
+openclaw_live_skill_path: "/home/sbplab/.openclaw/workspace/skills/mimo-audio/SKILL.md"
+
+# Keep false for normal review. Set true only when you want to overwrite the
+# live OpenClaw skill with the validated candidate.
+apply: false
+
+# Rejected or tied candidates are blocked by default even when apply is true.
+allow_rejected: false

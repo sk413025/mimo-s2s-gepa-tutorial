@@ -53,6 +53,7 @@ python scripts/run_openclaw_rollout.py
 python scripts/analyze_rollouts.py
 python scripts/propose_skill_candidate.py
 python scripts/validate_skill_candidate.py
+python scripts/promote_candidate.py
 python scripts/run_skillopt_gepa.py
 ```
 
@@ -190,3 +191,27 @@ outputs/candidate_registry.jsonl
   validation scores, decision reason, and generated audio paths when present.
 - Every GEPA metric candidate and final candidate is registered with hashes and
   patch edits.
+
+## Expected Skill Promotion Output
+
+```text
+outputs/<timestamp>_skill_promotion/
+  promotion_report.json
+  summary.json
+  diff.md
+  candidate/SKILL.md
+  live_before/SKILL.md
+outputs/candidate_registry.jsonl
+```
+
+## Promotion Criteria
+
+- Promotion is dry-run by default and does not overwrite the live OpenClaw
+  skill.
+- The report records the validation directory, decision, live skill path,
+  candidate path, before/after hashes, diff path, and backup path.
+- Rejected or tied candidates are blocked when `apply: true` unless
+  `allow_rejected: true` is set deliberately.
+- Applied promotions copy the previous live skill into `live_before/SKILL.md`,
+  overwrite the live skill with the candidate, and append a `candidate_promoted`
+  registry row.

@@ -141,6 +141,7 @@ python scripts/run_openclaw_rollout.py
 python scripts/analyze_rollouts.py
 python scripts/propose_skill_candidate.py
 python scripts/validate_skill_candidate.py
+python scripts/promote_candidate.py
 python scripts/run_skillopt_gepa.py
 ```
 
@@ -170,6 +171,9 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
 - `skillopt_gepa`: use `dspy.GEPA` to optimize the candidate skill proposer.
   The metric reuses the OpenClaw validation path, so feedback comes from fresh
   candidate rollouts instead of only offline text review.
+- `skill_promotion`: review the latest validation decision and write a
+  promotion report, candidate copy, live-skill backup, and diff. It is dry-run by
+  default and only overwrites the live OpenClaw skill when `apply: true`.
 
 Baseline and GEPA runs write `summary.json` and `predictions.json`.
 `openclaw_rollout` writes one subdirectory per task under `rollouts/`, plus a
@@ -182,6 +186,8 @@ skill, diff, and `proposal.json`.
 `skill_validation` writes baseline/candidate rollout reports plus `decision.json`.
 `skillopt_gepa` writes a fresh baseline report, per-metric-call candidates and
 decisions, aggregate `stats.json`, plus a final candidate proposal.
+`skill_promotion` writes a review package for the latest validation result. It
+does not modify the live skill unless explicitly configured to apply.
 
 The generated wav files are written by the MiMo audio wrapper. The run summary
 records both `audio_path` and `audio_url`, for example:
@@ -301,6 +307,23 @@ Registry rows include candidate hashes, patch edits, diff metadata, validation
 scores, accept/reject reasons, generated audio paths, and continuation-task
 flags. Set `candidate_registry_path` in a config file to write this history to a
 different JSONL path.
+
+Promotion runs add:
+
+```text
+outputs/<timestamp>_skill_promotion/
+  promotion_report.json
+  summary.json
+  diff.md
+  candidate/SKILL.md
+  live_before/SKILL.md
+```
+
+The default `configs/promote_candidate.yaml` is review-only. Rejected or tied
+candidates remain blocked even if `apply: true`, unless `allow_rejected: true`
+is set deliberately. Applied promotions append a `candidate_promoted` row to the
+registry. The script also accepts `--apply` and `--allow-rejected` for explicit
+manual promotion.
 
 ## References
 

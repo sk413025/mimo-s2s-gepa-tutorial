@@ -85,3 +85,17 @@ with fresh OpenClaw rollouts, and returns the validation decision as GEPA
 feedback. This mode does not overwrite the live OpenClaw skill. Metric
 candidates and the final candidate are recorded in
 `outputs/candidate_registry.jsonl`.
+
+`skill_promotion` turns a validation result into a reviewable promotion package.
+
+```bash
+python scripts/promote_candidate.py
+```
+
+Leave `skill_validation_dir` empty in `configs/promote_candidate.yaml` to use
+the latest `outputs/*_skill_validation` directory. The default config is
+dry-run: it writes `promotion_report.json`, `diff.md`, `candidate/SKILL.md`,
+and `live_before/SKILL.md`, but it does not overwrite the live OpenClaw skill.
+Set `apply: true` only after reviewing the report. Rejected or tied candidates
+are blocked unless `allow_rejected: true` is set intentionally. For manual use,
+the script also accepts `--apply` and `--allow-rejected`.

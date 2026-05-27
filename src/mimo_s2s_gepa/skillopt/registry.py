@@ -124,3 +124,28 @@ def build_validation_record(
         "baseline_continuation_tasks": collect_continuation_tasks(baseline_report),
         "candidate_continuation_tasks": collect_continuation_tasks(candidate_report),
     }
+
+
+def build_promotion_record(
+    *,
+    source: str,
+    run_dir: Path,
+    decision: dict[str, Any],
+    report: dict[str, Any],
+) -> dict[str, Any]:
+    candidate_skill_path = Path(report.get("candidate_skill_path") or "")
+    return {
+        "event": "candidate_promoted",
+        "source": source,
+        "run_dir": str(run_dir),
+        "validation_dir": str(report.get("validation_dir") or ""),
+        "candidate_skill_path": str(candidate_skill_path),
+        "candidate_hash": file_sha256(candidate_skill_path) if candidate_skill_path.is_file() else "",
+        "live_skill_path": str(report.get("live_skill_path") or ""),
+        "live_hash_before": report.get("live_hash_before", ""),
+        "live_hash_after": report.get("live_hash_after", ""),
+        "backup_live_skill_path": str(report.get("backup_live_skill_path") or ""),
+        "accepted": bool(decision.get("accepted", False)),
+        "allow_rejected": bool(report.get("allow_rejected", False)),
+        "decision_reason": decision.get("reason", ""),
+    }
