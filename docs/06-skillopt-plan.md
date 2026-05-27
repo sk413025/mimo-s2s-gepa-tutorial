@@ -39,6 +39,7 @@ src/mimo_s2s_gepa/skillopt/
 - [x] Validate candidate skills through fresh OpenClaw rollouts.
 - [x] Add accept/reject promotion reports without touching the live skill.
 - [x] Add a DSPy GEPA stage that optimizes the skill candidate proposer.
+- [x] Add stricter guided and skill-driven validation tasks.
 
 ## Acceptance Commands
 
@@ -134,10 +135,18 @@ outputs/<timestamp>_skill_validation/
 - Baseline and candidate both use fresh OpenClaw rollouts.
 - Candidate rollout uses `candidates/skill_v0001/SKILL.md`.
 - The live OpenClaw skill is not overwritten.
-- `decision.json` records pass counts, rollout directories, candidate path, and
-  accepted/rejected reason.
-- Candidate is accepted only when it passes more tasks than baseline; ties are
+- `decision.json` records pass counts, validation scores, rollout directories,
+  candidate path, and accepted/rejected reason.
+- Candidate is accepted only when it scores higher than baseline; ties are
   rejected.
+- Validation tasks check required tool names, command evidence, generated audio
+  fields, backend, duration, and generated wav file existence.
+- Skill-driven tasks require OpenClaw to derive wrapper commands from the
+  workspace `SKILL.md` instead of receiving the exact smoke command from the
+  harness.
+- Clean first-turn completion scores higher than completion that needs a
+  continuation turn, so validation can distinguish fragile task execution from
+  direct success.
 
 ## Expected SkillOpt GEPA Output
 
@@ -163,5 +172,5 @@ outputs/<timestamp>_skillopt_gepa/
 - GEPA optimizes the proposer prompt, not the OpenClaw runtime or DSPy itself.
 - Every metric call validates a candidate through fresh OpenClaw rollout.
 - The live OpenClaw skill is not overwritten.
-- Metric feedback includes baseline pass count, candidate pass count, decision
-  reason, and generated audio paths when present.
+- Metric feedback includes baseline pass count, candidate pass count,
+  validation scores, decision reason, and generated audio paths when present.

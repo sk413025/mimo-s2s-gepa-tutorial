@@ -63,8 +63,10 @@ python scripts/validate_skill_candidate.py
 
 Leave `skill_candidate_dir` empty in `configs/validate_skill_candidate.yaml` to
 use the latest `outputs/*_skill_candidate` directory. The validation stage
-rejects ties and only accepts a candidate when it passes more rollout tasks than
-the live baseline.
+rejects ties and only accepts a candidate when it scores higher than the live
+baseline. The default task file is
+`data/openclaw_skillopt_validation_tasks.jsonl`, which includes both guided and
+skill-driven OpenClaw tasks.
 
 `skillopt_gepa` uses DSPy GEPA to optimize the prompt behind the SkillOpt
 candidate proposer.

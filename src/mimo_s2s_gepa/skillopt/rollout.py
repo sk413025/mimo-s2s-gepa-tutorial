@@ -37,6 +37,13 @@ class OpenClawRolloutTask:
     require_generated_audio: bool
     timeout_sec: int
     max_turns: int
+    execution_mode: str
+    required_tool_names: tuple[str, ...]
+    required_command_substrings: tuple[str, ...]
+    required_audio_fields: tuple[str, ...]
+    expected_backend: str | None
+    min_duration_sec: float | None
+    require_audio_file_exists: bool
 
 
 def slugify(value: str) -> str:
@@ -227,6 +234,30 @@ User task:
 """
 
 
+def build_skill_driven_rollout_message(message: str, paths: OpenClawRolloutPaths) -> str:
+    return f"""Use tools now. Do not answer with a plan before tool calls.
+
+Step 1: call the read tool on this exact workspace skill path:
+{paths.skill_path}
+
+Step 2: follow that workspace skill to satisfy the user task below. Treat the
+workspace skill as the source of truth for wrapper commands and reporting fields.
+Do not read global/npm skill paths. Do not use sessions_spawn. Do not call
+healthcheck, mimo-audio, or mimo_audio_s2s as tools unless they are explicitly
+listed in the current tool set.
+
+If an exec call returns "Command still running", call the process tool to
+poll/log the returned session until it completes. Do not stop after starting a
+background process.
+
+Final answer must report: resolved_request, error, backend, audio_path,
+audio_url, duration_sec, text_channel, n_prompt_examples.
+
+User task:
+{message}
+"""
+
+
 def build_continuation_message(last_error: str, paths: OpenClawRolloutPaths) -> str:
     return f"""Use tools now. The previous validation did not pass: {last_error}
 
@@ -281,10 +312,60 @@ def export_trajectory(agent_id: str, session_key: str, run_dir: Path, output_nam
 
 
 def validate_rollout_result(parsed: dict[str, Any], task: OpenClawRolloutTask) -> None:
+    errors = find_validation_errors(parsed, task)
+    if errors:
+        raise RuntimeError("; ".join(errors))
+
+
+def find_validation_errors(parsed: dict[str, Any], task: OpenClawRolloutTask) -> list[str]:
+    errors: list[str] = []
     if parsed.get("final_status") != "success":
-        raise RuntimeError(f"OpenClaw trajectory final status is not success: {parsed.get('final_status')}")
+        errors.append(f"OpenClaw trajectory final status is not success: {parsed.get('final_status')}")
+
+    tool_calls = parsed.get("tool_calls", [])
+    tool_results = parsed.get("tool_results", [])
+    tool_names = {str(call.get("name") or "") for call in tool_calls}
+    evidence_text = "\n".join(
+        [
+            *(str(call.get("arguments") or "") for call in tool_calls),
+            *(str(result.get("text") or "") for result in tool_results),
+            *(str(text or "") for text in parsed.get("assistant_texts", [])),
+        ]
+    )
+
+    for name in task.required_tool_names:
+        if name not in tool_names:
+            errors.append(f"required tool was not called: {name}")
+
+    for needle in task.required_command_substrings:
+        if needle not in evidence_text:
+            errors.append(f"required command evidence was not found: {needle}")
+
+    generated_audio = parsed.get("generated_audio") or {}
     if task.require_generated_audio and not parsed.get("generated_audio"):
-        raise RuntimeError("OpenClaw rollout completed, but no generated audio was found in the trajectory")
+        errors.append("OpenClaw rollout completed, but no generated audio was found in the trajectory")
+
+    for field in task.required_audio_fields:
+        if not generated_audio.get(field):
+            errors.append(f"generated audio field is missing: {field}")
+
+    if task.expected_backend and generated_audio.get("backend") != task.expected_backend:
+        errors.append(f"generated audio backend mismatch: {generated_audio.get('backend')}")
+
+    if task.min_duration_sec is not None:
+        duration = generated_audio.get("duration_sec")
+        try:
+            if float(duration) < task.min_duration_sec:
+                errors.append(f"generated audio duration is too short: {duration}")
+        except (TypeError, ValueError):
+            errors.append(f"generated audio duration is not numeric: {duration}")
+
+    if task.require_audio_file_exists:
+        audio_path = generated_audio.get("audio_path_expanded") or generated_audio.get("audio_path")
+        if not audio_path or not Path(str(audio_path)).expanduser().is_file():
+            errors.append(f"generated audio file does not exist: {audio_path}")
+
+    return errors
 
 
 def load_jsonl(path: str | Path) -> list[dict[str, Any]]:
@@ -310,6 +391,19 @@ def load_rollout_tasks(config: dict[str, Any]) -> list[OpenClawRolloutTask]:
                 require_generated_audio=bool(raw.get("require_generated_audio", config.get("require_generated_audio", False))),
                 timeout_sec=int(raw.get("openclaw_timeout_sec", config.get("openclaw_timeout_sec", 600))),
                 max_turns=int(raw.get("openclaw_max_turns", config.get("openclaw_max_turns", 3))),
+                execution_mode=str(raw.get("execution_mode", config.get("execution_mode", "guided"))),
+                required_tool_names=tuple(raw.get("required_tool_names", config.get("required_tool_names", []))),
+                required_command_substrings=tuple(
+                    raw.get("required_command_substrings", config.get("required_command_substrings", []))
+                ),
+                required_audio_fields=tuple(raw.get("required_audio_fields", config.get("required_audio_fields", []))),
+                expected_backend=raw.get("expected_backend", config.get("expected_backend")),
+                min_duration_sec=(
+                    float(raw["min_duration_sec"])
+                    if "min_duration_sec" in raw
+                    else (float(config["min_duration_sec"]) if "min_duration_sec" in config else None)
+                ),
+                require_audio_file_exists=bool(raw.get("require_audio_file_exists", config.get("require_audio_file_exists", False))),
             )
         )
     max_tasks = int(config.get("max_tasks", len(tasks)))
@@ -318,6 +412,10 @@ def load_rollout_tasks(config: dict[str, Any]) -> list[OpenClawRolloutTask]:
 
 def summarize_rollout(task: OpenClawRolloutTask, task_dir: Path, parsed: dict[str, Any]) -> dict[str, Any]:
     generated_audio = parsed.get("generated_audio") or {}
+    validation_errors = find_validation_errors(parsed, task)
+    turn_count = len(list(task_dir.glob("parsed_result_turn_*.json"))) or 1
+    passed = not validation_errors
+    score = 1.0 if passed and turn_count == 1 else (0.75 if passed else 0.0)
     return {
         "task_id": task.task_id,
         "task_dir": str(task_dir),
@@ -325,8 +423,12 @@ def summarize_rollout(task: OpenClawRolloutTask, task_dir: Path, parsed: dict[st
         "event_count": parsed.get("event_count"),
         "tool_call_count": len(parsed.get("tool_calls", [])),
         "tool_result_count": len(parsed.get("tool_results", [])),
+        "turn_count": turn_count,
+        "used_continuation": turn_count > 1,
         "generated_audio": generated_audio,
-        "passed": parsed.get("final_status") == "success" and (not task.require_generated_audio or bool(generated_audio)),
+        "validation_errors": validation_errors,
+        "passed": passed,
+        "score": score,
     }
 
 
@@ -338,12 +440,24 @@ def run_one_rollout(config: dict[str, Any], run_dir: Path, task: OpenClawRollout
     cleanup: dict[str, Any] | None = None
     try:
         agent_id, paths, add_result = setup_agent(config, task_dir, task.task_id)
-        agent_message = build_rollout_message(task.message, paths)
+        if task.execution_mode == "skill_driven":
+            agent_message = build_skill_driven_rollout_message(task.message, paths)
+        elif task.execution_mode == "guided":
+            agent_message = build_rollout_message(task.message, paths)
+        else:
+            raise ValueError(f"Unknown OpenClaw rollout execution_mode: {task.execution_mode}")
         task_record = {
             "task_id": task.task_id,
             "message": agent_message,
             "user_message": task.message,
+            "execution_mode": task.execution_mode,
             "require_generated_audio": task.require_generated_audio,
+            "required_tool_names": list(task.required_tool_names),
+            "required_command_substrings": list(task.required_command_substrings),
+            "required_audio_fields": list(task.required_audio_fields),
+            "expected_backend": task.expected_backend,
+            "min_duration_sec": task.min_duration_sec,
+            "require_audio_file_exists": task.require_audio_file_exists,
             "timeout_sec": task.timeout_sec,
             "max_turns": task.max_turns,
             "agent_id": agent_id,
@@ -381,6 +495,8 @@ def run_one_rollout(config: dict[str, Any], run_dir: Path, task: OpenClawRollout
             except RuntimeError as exc:
                 validation_error = str(exc)
                 if turn == task.max_turns:
+                    if config.get("continue_on_validation_error"):
+                        break
                     raise
                 agent_message = build_continuation_message(validation_error, paths)
         summary = summarize_rollout(task, task_dir, parsed)

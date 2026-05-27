@@ -37,15 +37,24 @@ def expand_home_path(value: str | None) -> str | None:
 
 
 def extract_field(text: str, field: str) -> str | None:
+    normalized = text.replace("\\_", "_").replace("*", "")
     patterns = [
         rf'"{re.escape(field)}"\s*:\s*"([^"\n]+)"',
-        rf"{re.escape(field)}\s*:\s*([^\n,]+)",
+        rf'"{re.escape(field)}"\s*:\s*([^,\n}}\]]+)',
+        rf"{re.escape(field)}\s*:\s*`?([^`\n,]+)`?",
     ]
     for pattern in patterns:
-        match = re.search(pattern, text)
+        match = re.search(pattern, normalized)
         if match:
-            return match.group(1).strip().strip('"')
+            return match.group(1).strip().strip('"').rstrip(".")
     return None
+
+
+def parse_number(text: str | None) -> float | None:
+    if not text:
+        return None
+    match = re.search(r"-?\d+(?:\.\d+)?", text)
+    return float(match.group(0)) if match else None
 
 
 def extract_generated_audio_from_text(text: str) -> dict[str, Any] | None:
@@ -67,16 +76,43 @@ def extract_generated_audio_from_text(text: str) -> dict[str, Any] | None:
         "source": "text",
     }
     if duration_text:
-        try:
-            generated["duration_sec"] = float(duration_text)
-        except ValueError:
-            generated["duration_sec"] = duration_text
+        generated["duration_sec"] = parse_number(duration_text) or duration_text
     if examples_text:
-        try:
-            generated["n_prompt_examples"] = int(examples_text)
-        except ValueError:
-            generated["n_prompt_examples"] = examples_text
+        examples_count = parse_number(examples_text)
+        generated["n_prompt_examples"] = int(examples_count) if examples_count is not None else examples_text
     return {key: value for key, value in generated.items() if value is not None}
+
+
+def enrich_generated_audio_from_texts(generated_audio: dict[str, Any], texts: list[str]) -> dict[str, Any]:
+    enriched = dict(generated_audio)
+    field_parsers = {
+        "audio_url": str,
+        "backend": str,
+        "text_channel": str,
+        "error": str,
+    }
+    for field, parser in field_parsers.items():
+        if enriched.get(field):
+            continue
+        value = next((extract_field(text, field) for text in texts if extract_field(text, field) is not None), None)
+        if value is not None:
+            enriched[field] = parser(value)
+
+    if not enriched.get("duration_sec"):
+        value = next((extract_field(text, "duration_sec") for text in texts if extract_field(text, "duration_sec") is not None), None)
+        if value is not None:
+            enriched["duration_sec"] = parse_number(value) or value
+
+    if not enriched.get("n_prompt_examples"):
+        value = next(
+            (extract_field(text, "n_prompt_examples") for text in texts if extract_field(text, "n_prompt_examples") is not None),
+            None,
+        )
+        if value is not None:
+            count = parse_number(value)
+            enriched["n_prompt_examples"] = int(count) if count is not None else value
+
+    return enriched
 
 
 def tool_result_text(event: dict[str, Any]) -> str:
@@ -142,18 +178,22 @@ def parse_trajectory_bundle(bundle_dir: str | Path) -> dict[str, Any]:
         }
 
     assistant_texts = artifacts.get("assistantTexts", [])
+    text_sources: list[str] = []
+    for result in reversed(tool_results):
+        text_sources.append(result.get("text", ""))
+        details = result.get("details", {})
+        if isinstance(details, dict):
+            text_sources.append(str(details.get("aggregated", "")))
+    text_sources.extend(reversed([text for text in assistant_texts if isinstance(text, str)]))
+
     if not generated_audio:
-        text_sources: list[str] = []
-        for result in reversed(tool_results):
-            text_sources.append(result.get("text", ""))
-            details = result.get("details", {})
-            if isinstance(details, dict):
-                text_sources.append(str(details.get("aggregated", "")))
-        text_sources.extend(reversed([text for text in assistant_texts if isinstance(text, str)]))
         generated_audio = next(
             (extracted for text in text_sources if (extracted := extract_generated_audio_from_text(text))),
             None,
         )
+
+    if isinstance(generated_audio, dict):
+        generated_audio = enrich_generated_audio_from_texts(generated_audio, text_sources)
 
     return {
         "bundle_dir": str(root),

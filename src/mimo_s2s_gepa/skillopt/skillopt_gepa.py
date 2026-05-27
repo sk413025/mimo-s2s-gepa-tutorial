@@ -158,7 +158,7 @@ class SkillOptGepaMetric:
             candidate_passed = int(decision["candidate_passed"])
             if decision["accepted"]:
                 score = 1.0
-            elif candidate_passed == baseline_passed and candidate_passed > 0:
+            elif decision.get("candidate_score") == decision.get("baseline_score") and candidate_passed > 0:
                 score = float(self.config.get("tie_score", 0.5))
             else:
                 score = 0.0
@@ -166,8 +166,14 @@ class SkillOptGepaMetric:
             feedback = "\n".join(
                 [
                     f"Validation decision: {decision['reason']}",
-                    f"Baseline passed {baseline_passed}/{decision['baseline_num_tasks']}.",
-                    f"Candidate passed {candidate_passed}/{decision['candidate_num_tasks']}.",
+                    (
+                        f"Baseline passed {baseline_passed}/{decision['baseline_num_tasks']} "
+                        f"with score {decision.get('baseline_score')}."
+                    ),
+                    (
+                        f"Candidate passed {candidate_passed}/{decision['candidate_num_tasks']} "
+                        f"with score {decision.get('candidate_score')}."
+                    ),
                     f"Candidate audio paths: {candidate_audio_paths(candidate_report)}",
                     "Improve the skill only with small S2S-scoped edits grounded in trajectory evidence.",
                 ]
@@ -233,6 +239,10 @@ def collect_metric_stats(run_dir: Path) -> dict[str, Any]:
                 "reason": decision.get("reason", result.get("feedback", "")),
                 "baseline_passed": decision.get("baseline_passed"),
                 "candidate_passed": decision.get("candidate_passed"),
+                "baseline_score": decision.get("baseline_score"),
+                "candidate_score": decision.get("candidate_score"),
+                "baseline_clean_passed": decision.get("baseline_clean_passed"),
+                "candidate_clean_passed": decision.get("candidate_clean_passed"),
             }
         )
     accepted = [row for row in calls if row.get("accepted")]

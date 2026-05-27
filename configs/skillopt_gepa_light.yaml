@@ -4,13 +4,13 @@ output_dir: "outputs"
 # Leave empty to use the latest outputs/*_trajectory_analysis directory.
 trajectory_analysis_dir: ""
 
-task_path: "data/openclaw_rollout_tasks.jsonl"
+task_path: "data/openclaw_skillopt_validation_tasks.jsonl"
 openclaw_agent_model: "vllm/google/gemma-4-E4B-it"
 openclaw_live_skill_path: "/home/sbplab/.openclaw/workspace/skills/mimo-audio/SKILL.md"
 openclaw_timeout_sec: 600
 openclaw_max_turns: 3
 require_generated_audio: true
-max_tasks: 1
+max_tasks: 2
 
 gemma_base_url: "http://100.70.253.93:8000/v1"
 gemma_model: "openai/google/gemma-4-E4B-it"

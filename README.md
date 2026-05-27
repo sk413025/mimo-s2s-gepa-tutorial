@@ -77,7 +77,7 @@ skill_validation:
   live SKILL.md and candidate SKILL.md
     -> run fresh baseline OpenClaw rollouts
     -> run fresh candidate OpenClaw rollouts
-    -> compare pass counts
+    -> compare validation scores
     -> accept only on strict improvement
 
 skillopt_gepa:
@@ -163,7 +163,7 @@ Outputs are saved under `outputs/<timestamp>_<mode>/`.
   trajectory feedback. This stage writes candidate artifacts and a diff, but it
   does not overwrite the live OpenClaw skill.
 - `skill_validation`: run fresh baseline and candidate OpenClaw rollouts, then
-  accept the candidate only if it strictly improves the pass count. Ties are
+  accept the candidate only if it strictly improves the validation score. Ties are
   rejected.
 - `skillopt_gepa`: use `dspy.GEPA` to optimize the candidate skill proposer.
   The metric reuses the OpenClaw validation path, so feedback comes from fresh
@@ -194,6 +194,8 @@ http://100.70.78.122:19080/audio/<id>.wav
 ```text
 configs/        service URLs and run budgets
 data/           tiny Hank sample dataset
+data/openclaw_skillopt_validation_tasks.jsonl
+                stricter SkillOpt validation tasks for OpenClaw rollouts
 scripts/        short entrypoints for each mode
 src/            role-based tutorial modules
 src/mimo_s2s_gepa/skillopt/
@@ -251,6 +253,17 @@ outputs/<timestamp>_skill_validation/
   baseline_rollout/
   candidate_rollout/
 ```
+
+SkillOpt validation tasks can run in two modes:
+
+- `guided`: the harness gives OpenClaw the exact health and smoke commands.
+- `skill_driven`: the harness only tells OpenClaw to read the workspace skill
+  and follow it, so candidate `SKILL.md` text can affect execution.
+
+Each task can require tool calls, command evidence, audio metadata fields,
+backend identity, minimum duration, and an existing generated wav file.
+Tasks that complete cleanly in one turn score higher than tasks that only pass
+after a continuation turn.
 
 SkillOpt GEPA runs add:
 

@@ -29,6 +29,7 @@ def resolve_candidate_dir(config: dict[str, Any]) -> Path:
 def make_rollout_config(config: dict[str, Any], skill_path: Path) -> dict[str, Any]:
     rollout_config = dict(config)
     rollout_config["openclaw_skill_path"] = str(skill_path)
+    rollout_config["continue_on_validation_error"] = True
     return rollout_config
 
 
@@ -50,6 +51,8 @@ def run_rollout_set(config: dict[str, Any], run_dir: Path, skill_path: Path, lab
         "rollout_dir": str(rollout_dir),
         "num_tasks": len(tasks),
         "num_passed": sum(1 for row in summaries if row.get("passed")),
+        "num_clean_passed": sum(1 for row in summaries if row.get("passed") and not row.get("used_continuation")),
+        "total_score": sum(float(row.get("score") or 0.0) for row in summaries),
         "tasks": summaries,
     }
     save_json(rollout_dir / "rollout_report.json", report)
@@ -65,19 +68,25 @@ def build_decision(
 ) -> dict[str, Any]:
     baseline_passed = int(baseline_report.get("num_passed", 0))
     candidate_passed = int(candidate_report.get("num_passed", 0))
-    accepted = candidate_passed > baseline_passed
+    baseline_score = float(baseline_report.get("total_score", baseline_passed))
+    candidate_score = float(candidate_report.get("total_score", candidate_passed))
+    accepted = candidate_score > baseline_score
     if accepted:
-        reason = "candidate passed more validation tasks than baseline"
-    elif candidate_passed == baseline_passed:
+        reason = "candidate validation score is higher than baseline"
+    elif candidate_score == baseline_score:
         reason = "candidate tied baseline; reject because validation requires strict improvement"
     else:
-        reason = "candidate passed fewer validation tasks than baseline"
+        reason = "candidate validation score is lower than baseline"
 
     return {
         "accepted": accepted,
         "reason": reason,
         "baseline_passed": baseline_passed,
         "candidate_passed": candidate_passed,
+        "baseline_score": baseline_score,
+        "candidate_score": candidate_score,
+        "baseline_clean_passed": baseline_report.get("num_clean_passed"),
+        "candidate_clean_passed": candidate_report.get("num_clean_passed"),
         "baseline_num_tasks": baseline_report.get("num_tasks"),
         "candidate_num_tasks": candidate_report.get("num_tasks"),
         "baseline_rollout_dir": baseline_report.get("rollout_dir"),
